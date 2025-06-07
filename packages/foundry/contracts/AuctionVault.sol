@@ -41,11 +41,6 @@ contract AuctionVault {
         uint256 id;
     }
 
-    struct Bidder {
-        address wallet;
-        uint256 bidAmount;
-    }
-
     struct BidPool {
         Character character;
         uint256 poolBalance;
@@ -101,12 +96,12 @@ contract AuctionVault {
     error AuctionExpired();
     error InvalidCharacter();
 
-    event BidPlaced(uint256 _auctionId, uint256 _amount, uint256 _characterId);
+    event BidPlaced(uint256 indexed _auctionId, address indexed _user, uint256 _amount, uint256 _characterId);
 
     mapping(address => mapping(uint256 => uint256)) public userBidBalance;
 
     function bid(uint256 _amount, uint256 _characterIndex) public noReentrant {
-        if (auctions[auctionId].isClosed) revert AuctionExpired();
+        if (auctions[auctionId].endTime >= block.timestamp) revert AuctionExpired();
         if (_amount == 0) revert AmountZero();
         if (auctions[auctionId].characters[_characterIndex].character.id == 0) revert InvalidCharacter();
 
@@ -114,12 +109,18 @@ contract AuctionVault {
         userBidBalance[msg.sender][auctionId] += _amount;
         auctions[auctionId].characters[_characterIndex].poolBalance += _amount;
 
-        emit BidPlaced(auctionId, _amount, auctions[auctionId].characters[_characterIndex].character.id);
+        emit BidPlaced(auctionId, msg.sender, _amount, auctions[auctionId].characters[_characterIndex].character.id);
     }
 
-    //@dev note: have to check if msg.sender is top bidder and revoke top bidder status if true.
-    //...this creates issue though where previous top bidder would have to be discovered somehow, so annoying issue. will require some refactoring
-    function withdrawBid(uint256 _auctionId) public { }
+    event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
+
+    function withdrawBid(uint256 _amount) public {
+        if (_amount == 0) revert AmountZero();
+        if (auctions[auctionId].endTime >= block.timestamp) revert AuctionExpired();
+        ERC20(ASSET).safeTransfer(msg.sender, _amount);
+        userBidBalance[msg.sender][auctionId] -= _amount;
+        emit BidWithdrawn(auctionId, msg.sender, _amount);
+    }
 
     //this function needs to do a few different things:
 
