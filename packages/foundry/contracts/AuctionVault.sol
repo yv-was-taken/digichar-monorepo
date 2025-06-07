@@ -3,8 +3,10 @@ pragma solidity ^0.8.19;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
+import { DigicharFactory } from "./DigicharFactory.sol";
+import { DigicharToken } from "./DigicharToken.sol";
 
-contract AuctionVault {
+contract AuctionVault is Structs{
     using SafeTransferLib for ERC20;
 
     error OnlyOwner();
@@ -18,6 +20,20 @@ contract AuctionVault {
     //asset for vault deposits
     ERC20 public immutable ASSET;
     address public owner;
+    DigicharFactory digicharFactory;
+    DigicharToken digicharToken;
+  
+    event DigicharFactorySet(address _digicharFactory);
+    function setDigicharFactory(address _digicharFactory) public onlyOwner {
+      digicharFactory = DigicharFactory(_digicharFactory);
+      emit DigicharFactorySet(_digicharFactory);
+    }
+
+    event DigicharTokenSet(address _digicharToken);
+    function setDigicharToken(address _digicharToken) public onlyOwner {
+      digicharToken = DigicharToken(_digicharToken);
+      emit DigicharTokenSet(_digicharToken);
+    }
 
     constructor(address _asset) {
         owner = msg.sender;
@@ -33,13 +49,6 @@ contract AuctionVault {
         emit AuctionTimeChanged(_auctionDurationTime);
     }
 
-    struct Character {
-        string name;
-        string ticker;
-        string description;
-        string tokenURI;
-        uint256 id;
-    }
 
     struct BidPool {
         Character character;
@@ -86,7 +95,7 @@ contract AuctionVault {
     bool private _locked;
 
     modifier noReentrant() {
-        require(!_locked, "ReentrancyGuard: reentrant call");
+        if (_locked) revert("ReentrancyGuard: reentrant call");
         _locked = true;
         _;
         _locked = false;
@@ -115,8 +124,8 @@ contract AuctionVault {
     event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
 
     function withdrawBid(uint256 _amount) public {
-        if (_amount == 0) revert AmountZero();
         if (auctions[auctionId].endTime >= block.timestamp) revert AuctionExpired();
+        if (_amount == 0) revert AmountZero();
         ERC20(ASSET).safeTransfer(msg.sender, _amount);
         userBidBalance[msg.sender][auctionId] -= _amount;
         emit BidWithdrawn(auctionId, msg.sender, _amount);
@@ -131,5 +140,33 @@ contract AuctionVault {
     // 4. create (and lock) LP for character ERC20 token using (just winning or total?) bid pool
     // 4. update state variables relating to character token data (erc721 address, erc20 address)
     // 5. update state variables relating to bidders token claim amounts (proportionate to bid size relative to total bid pool)
-    function closeAuction(uint256 _auctionId) public onlyOwner { }
+
+    error AuctionStillOpen();
+    //@dev note: _auctionWinnerCharacterIndex and _topBidder is determined from offchain indexing.
+    function closeCurrentAuction(uint _auctionWinnerCharacterIndex, address _topBidder) public onlyOwner {
+        if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
+
+        Character memory winningCharacter = auctions[auctionId].characters[_auctionWinnerCharacterIndex].character;
+  
+        digicharFactory.createCharacter(winningCharacter, _topBidder);
+        //
+
+        //mint ownership certificate
+        uint ownershipCertificateId = digicharFactory.mintOwnershipCertificate(winningCharacter, _topBidder);
+        //send ownership certificate to top bidder
+        DigicharFactory(digicharFactory).transferFrom(address(this), _topBidder, ownershipCertificateId);
+
+        //mint character tokens 
+        address digicharTokenAddress = digicharFactory.mintTokens(winningCharacter, _topBidder);
+        //create LP for character token using winning bid pool balance
+
+        
+        //send lp to burn address
+
+
+    }
+
+    function claimTokens(uint _auctionId) public {
+        if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
+    }
 }
