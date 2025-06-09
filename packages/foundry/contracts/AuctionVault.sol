@@ -62,10 +62,12 @@ contract AuctionVault is Structs {
     }
 
     mapping(uint256 => Auction) public auctions;
-    uint256 public auctionId = 0;
+    uint256 public auctionId;
     //@dev initializing to one for valid character id checking in bid() function, allowing for zero would create a vulnerability allowing users to bid on characters from previous auctions
+    //@TODO refactoring `Character` to just be tokenURI, this logic needs to be rewritten.
     uint256 public characterId = 1;
 
+    //@TODO refactoring `Character` to just be tokenURI, this logic needs to be rewritten.
     function createAuction(
         string[3] memory _characterName,
         string[3] memory _characterTicker,
@@ -141,26 +143,20 @@ contract AuctionVault is Structs {
     // 5. update state variables relating to bidders token claim amounts (proportionate to bid size relative to total bid pool)
 
     error AuctionStillOpen();
-    //@dev note: _auctionWinnerCharacterIndex and _topBidder is determined from offchain indexing.
 
-    function closeCurrentAuction(uint256 _auctionWinnerCharacterIndex, address _topBidder) public onlyOwner {
+    //@dev note: _winningCharacterIndex and _topBidder is determined from offchain indexing.
+    function closeCurrentAuction(uint256 _winningCharacterIndex, address _topBidder) public onlyOwner {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
 
-        Character memory winningCharacter = auctions[auctionId].characters[_auctionWinnerCharacterIndex].character;
+        Character memory winningCharacter = auctions[auctionId].characters[_winningCharacterIndex].character;
+        // Get winning bid pool amount
+        uint256 winningPoolBalance = auctions[auctionId].characters[_winningCharacterIndex].poolBalance;
 
-        digicharFactory.createCharacter(winningCharacter, _topBidder);
-        //
-
-        //mint ownership certificate
-        uint256 ownershipCertificateId = digicharFactory.mintOwnershipCertificate(winningCharacter, _topBidder);
-        //send ownership certificate to top bidder
-        DigicharFactory(digicharFactory).transferFrom(address(this), _topBidder, ownershipCertificateId);
-
-        //mint character tokens
-        address digicharTokenAddress = digicharFactory.mintTokens(winningCharacter, _topBidder);
-        //create LP for character token using winning bid pool balance
-
-        //send lp to burn address
+        // Create character, sending winning pool balance for token creation
+        digicharFactory.createCharacter{ value: winningPoolBalance }(
+            _winningCharacterIndex, _characterTokenURI, _topBidder
+        );
+        auctionId++;
     }
 
     function claimTokens(uint256 _auctionId) public {
