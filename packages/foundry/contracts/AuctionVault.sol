@@ -6,7 +6,7 @@ import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { DigicharFactory } from "./DigicharFactory.sol";
 import { DigicharToken } from "./DigicharToken.sol";
 
-contract AuctionVault is Structs{
+contract AuctionVault is Structs {
     using SafeTransferLib for ERC20;
 
     error OnlyOwner();
@@ -22,17 +22,19 @@ contract AuctionVault is Structs{
     address public owner;
     DigicharFactory digicharFactory;
     DigicharToken digicharToken;
-  
+
     event DigicharFactorySet(address _digicharFactory);
+
     function setDigicharFactory(address _digicharFactory) public onlyOwner {
-      digicharFactory = DigicharFactory(_digicharFactory);
-      emit DigicharFactorySet(_digicharFactory);
+        digicharFactory = DigicharFactory(_digicharFactory);
+        emit DigicharFactorySet(_digicharFactory);
     }
 
     event DigicharTokenSet(address _digicharToken);
+
     function setDigicharToken(address _digicharToken) public onlyOwner {
-      digicharToken = DigicharToken(_digicharToken);
-      emit DigicharTokenSet(_digicharToken);
+        digicharToken = DigicharToken(_digicharToken);
+        emit DigicharTokenSet(_digicharToken);
     }
 
     constructor(address _asset) {
@@ -49,7 +51,6 @@ contract AuctionVault is Structs{
         emit AuctionTimeChanged(_auctionDurationTime);
     }
 
-
     struct BidPool {
         Character character;
         uint256 poolBalance;
@@ -58,7 +59,6 @@ contract AuctionVault is Structs{
     struct Auction {
         BidPool[3] characters;
         uint256 endTime;
-        bool isClosed; //@dev is this variable needed? can just use endTime for everything, right?
     }
 
     mapping(uint256 => Auction) public auctions;
@@ -87,8 +87,7 @@ contract AuctionVault is Structs{
             characterBidPools[i] = characterBidPool;
         }
 
-        auctions[auctionId] =
-            Auction({ characters: characterBidPools, endTime: block.timestamp + auctionDurationTime, isClosed: false });
+        auctions[auctionId] = Auction({ characters: characterBidPools, endTime: block.timestamp + auctionDurationTime });
         auctionId++;
     }
 
@@ -143,30 +142,28 @@ contract AuctionVault is Structs{
 
     error AuctionStillOpen();
     //@dev note: _auctionWinnerCharacterIndex and _topBidder is determined from offchain indexing.
-    function closeCurrentAuction(uint _auctionWinnerCharacterIndex, address _topBidder) public onlyOwner {
+
+    function closeCurrentAuction(uint256 _auctionWinnerCharacterIndex, address _topBidder) public onlyOwner {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
 
         Character memory winningCharacter = auctions[auctionId].characters[_auctionWinnerCharacterIndex].character;
-  
+
         digicharFactory.createCharacter(winningCharacter, _topBidder);
         //
 
         //mint ownership certificate
-        uint ownershipCertificateId = digicharFactory.mintOwnershipCertificate(winningCharacter, _topBidder);
+        uint256 ownershipCertificateId = digicharFactory.mintOwnershipCertificate(winningCharacter, _topBidder);
         //send ownership certificate to top bidder
         DigicharFactory(digicharFactory).transferFrom(address(this), _topBidder, ownershipCertificateId);
 
-        //mint character tokens 
+        //mint character tokens
         address digicharTokenAddress = digicharFactory.mintTokens(winningCharacter, _topBidder);
         //create LP for character token using winning bid pool balance
 
-        
         //send lp to burn address
-
-
     }
 
-    function claimTokens(uint _auctionId) public {
+    function claimTokens(uint256 _auctionId) public {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
     }
 }

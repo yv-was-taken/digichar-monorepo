@@ -1,5 +1,3 @@
 pragma solidity ^0.8.19;
 
-contract DigiSwapHook {
-
-}
+contract DigiSwapHook { }
