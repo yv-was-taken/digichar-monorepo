@@ -6,7 +6,7 @@ import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { DigicharFactory } from "./DigicharFactory.sol";
 import { DigicharToken } from "./DigicharToken.sol";
 
-contract AuctionVault is Structs {
+contract AuctionVault {
     using SafeTransferLib for ERC20;
 
     error OnlyOwner();
@@ -25,7 +25,7 @@ contract AuctionVault is Structs {
 
     event DigicharFactorySet(address _digicharFactory);
 
-    function setDigicharFactory(address _digicharFactory) public onlyOwner {
+    function setDigicharFactory(address payable _digicharFactory) public onlyOwner {
         digicharFactory = DigicharFactory(_digicharFactory);
         emit DigicharFactorySet(_digicharFactory);
     }
@@ -52,7 +52,7 @@ contract AuctionVault is Structs {
     }
 
     struct BidPool {
-        Character character;
+        string characterURI;
         uint256 poolBalance;
     }
 
@@ -63,33 +63,16 @@ contract AuctionVault is Structs {
 
     mapping(uint256 => Auction) public auctions;
     uint256 public auctionId;
-    //@dev initializing to one for valid character id checking in bid() function, allowing for zero would create a vulnerability allowing users to bid on characters from previous auctions
-    //@TODO refactoring `Character` to just be tokenURI, this logic needs to be rewritten.
-    uint256 public characterId = 1;
 
-    //@TODO refactoring `Character` to just be tokenURI, this logic needs to be rewritten.
-    function createAuction(
-        string[3] memory _characterName,
-        string[3] memory _characterTicker,
-        string[3] memory _characterTokenURI,
-        string[3] memory _characterDescription
-    ) public onlyOwner {
-        BidPool[3] memory characterBidPools;
+    function createAuction(string[3] memory characterURIs) public onlyOwner {
+        Auction storage newAuction = auctions[auctionId];
+        newAuction.endTime = block.timestamp + auctionDurationTime;
+
         for (uint8 i = 0; i < 3; i++) {
-            Character memory character = Character({
-                name: _characterName[i],
-                ticker: _characterTicker[i],
-                tokenURI: _characterTokenURI[i],
-                description: _characterDescription[i],
-                id: characterId
-            });
-            characterId++;
-
-            BidPool memory characterBidPool = BidPool({ character: character, poolBalance: 0 });
-            characterBidPools[i] = characterBidPool;
+            newAuction.characters[i].characterURI = characterURIs[i];
+            newAuction.characters[i].poolBalance = 0;
         }
 
-        auctions[auctionId] = Auction({ characters: characterBidPools, endTime: block.timestamp + auctionDurationTime });
         auctionId++;
     }
 
@@ -108,27 +91,36 @@ contract AuctionVault is Structs {
 
     event BidPlaced(uint256 indexed _auctionId, address indexed _user, uint256 _amount, uint256 _characterId);
 
-    mapping(address => mapping(uint256 => uint256)) public userBidBalance;
+    mapping(address => mapping(uint256 => mapping(uint8 => uint256))) public userBidBalance;
 
-    function bid(uint256 _amount, uint256 _characterIndex) public noReentrant {
+    function bid(uint256 _amount, uint8 _characterIndex) public noReentrant {
         if (auctions[auctionId].endTime >= block.timestamp) revert AuctionExpired();
         if (_amount == 0) revert AmountZero();
-        if (auctions[auctionId].characters[_characterIndex].character.id == 0) revert InvalidCharacter();
+
+        //@dev checking if characterURI being bid on is valid
+        bytes memory characterURIbytes = bytes(auctions[auctionId].characters[_characterIndex].characterURI);
+        if ((characterURIbytes).length == 0) revert InvalidCharacter();
 
         ERC20(ASSET).safeTransferFrom(msg.sender, address(this), _amount);
-        userBidBalance[msg.sender][auctionId] += _amount;
+        userBidBalance[msg.sender][auctionId][_characterIndex] += _amount;
         auctions[auctionId].characters[_characterIndex].poolBalance += _amount;
 
-        emit BidPlaced(auctionId, msg.sender, _amount, auctions[auctionId].characters[_characterIndex].character.id);
+        emit BidPlaced(auctionId, msg.sender, _amount, _characterIndex);
     }
 
     event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
 
-    function withdrawBid(uint256 _amount) public {
+    error AmountTooLarge();
+
+    function withdrawBid(uint256 _amount, uint8 _characterIndex) public {
         if (auctions[auctionId].endTime >= block.timestamp) revert AuctionExpired();
         if (_amount == 0) revert AmountZero();
+
+        uint256 characterPoolBalance = userBidBalance[msg.sender][auctionId][_characterIndex];
+        if (_amount > characterPoolBalance) revert AmountTooLarge();
+
         ERC20(ASSET).safeTransfer(msg.sender, _amount);
-        userBidBalance[msg.sender][auctionId] -= _amount;
+        userBidBalance[msg.sender][auctionId][_characterIndex] -= _amount;
         emit BidWithdrawn(auctionId, msg.sender, _amount);
     }
 
@@ -148,18 +140,31 @@ contract AuctionVault is Structs {
     function closeCurrentAuction(uint256 _winningCharacterIndex, address _topBidder) public onlyOwner {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
 
-        Character memory winningCharacter = auctions[auctionId].characters[_winningCharacterIndex].character;
+        string memory winningCharacterURI = auctions[auctionId].characters[_winningCharacterIndex].characterURI;
         // Get winning bid pool amount
         uint256 winningPoolBalance = auctions[auctionId].characters[_winningCharacterIndex].poolBalance;
 
         // Create character, sending winning pool balance for token creation
         digicharFactory.createCharacter{ value: winningPoolBalance }(
-            _winningCharacterIndex, _characterTokenURI, _topBidder
+            _topBidder, _winningCharacterIndex, winningCharacterURI
         );
         auctionId++;
     }
 
     function claimTokens(uint256 _auctionId) public {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
+        //@TODO
+    }
+
+    function getPoolBalance(uint256 _auctionId, uint256 _characterIndex) external view returns (uint256) {
+        return auctions[_auctionId].characters[_characterIndex].poolBalance;
+    }
+
+    function getUserBidBalance(address _user, uint256 _auctionId, uint8 _characterIndex)
+        external
+        view
+        returns (uint256)
+    {
+        return userBidBalance[_user][auctionId][_characterIndex];
     }
 }

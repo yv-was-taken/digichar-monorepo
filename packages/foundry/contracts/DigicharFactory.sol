@@ -6,13 +6,12 @@ import { ERC721 } from "solmate/tokens/ERC721.sol";
 import { DigicharToken } from "./DigicharToken.sol";
 import { AuctionVault } from "./AuctionVault.sol";
 import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
-import { Structs } from "./Structs.sol";
 
-contract DigicharFactory is Structs {
+contract DigicharFactory {
     error OnlyAuctionVault();
 
     modifier onlyAuctionVault() {
-        if (msg.sender != auctionVault) revert OnlyAuctionVault();
+        if (msg.sender != address(auctionVault)) revert OnlyAuctionVault();
         _;
     }
 
@@ -48,17 +47,17 @@ contract DigicharFactory is Structs {
         emit DigicharOwnershipCertificateSet(_digicharOwnershipCertificate);
     }
 
-    function createCharacter(address _winningBidder, uint256 _winningCharacterIndex, string _characterTokenURI)
+    function createCharacter(address _winningBidder, uint256 _winningCharacterIndex, string memory _characterTokenURI)
         public
-        OnlyAuctionVault
+        payable
+        onlyAuctionVault
     {
         //@dev mint character nft and send them ownership certificate
         digicharOwnershipCertificate.mint(_winningBidder, _characterTokenURI);
 
         //@dev create character token using LP from winning bid pool to DigicharFactory
-        uint256 characterAuctionId = auctionVault.auctionId();
-        uint256 winningPoolBalance =
-            auctionVault.auctions[characterAuctionId].characters[_winningCharacterIndex].poolBalance;
+        uint256 _auctionId = auctionVault.auctionId();
+        uint256 winningPoolBalance = auctionVault.getPoolBalance(_auctionId, _winningCharacterIndex);
         //@TODO create token pair, create LP using `winningPoolBalance`, lock LP by sending LP to zero address
     }
 
