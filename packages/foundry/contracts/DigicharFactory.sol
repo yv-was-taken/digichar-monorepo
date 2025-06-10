@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IUniswapV2Router02 } from "v2-periphery/interfaces/IUniswapV2Router02.sol";
 import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
 import { ERC721 } from "solmate/tokens/ERC721.sol";
@@ -10,6 +11,8 @@ import { AuctionVault } from "./AuctionVault.sol";
 import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
 
 contract DigicharFactory {
+    using SafeTransferLib for ERC20;
+
     constructor(address _auctionVault) {
         auctionVault = AuctionVault(_auctionVault);
         owner = msg.sender;
@@ -83,7 +86,7 @@ contract DigicharFactory {
         string memory _characterTokenURI,
         string memory _characterName,
         string memory _characterSymbol
-    ) public payable onlyAuctionVault {
+    ) external payable onlyAuctionVault returns (address) {
         //@dev mint character nft and send them ownership certificate
         digicharOwnershipCertificate.mint(_winningBidder, _characterTokenURI);
 
@@ -100,13 +103,15 @@ contract DigicharFactory {
             //@dev locking half of total supply in LP
             // this amount needs to be played with to find a good starting value
             // @TODO extract token supply metrics to contract config
-            500_000 / 2,
+            500_000 * 10 ** 18,
             //@dev setting tokenAmountMin and ethAmountMin to zero as not needed metric for initial LP creation
             0,
             0
         );
+        //@dev now that LP is created (and burned), send rest of tokens back to auction vault for token claim.
+        ERC20(_tokenAddress).safeTransfer(address(auctionVault), 500_000 * 10 ** 18); // @TODO extract token supply metrics to contract config
 
-        //i want to now send the LP token to the zero address.. how do I do that?
+        return _tokenAddress;
     }
 
     function createToken(string memory _name, string memory _symbol) private returns (address) {
