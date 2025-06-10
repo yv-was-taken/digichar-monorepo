@@ -2,13 +2,10 @@
 pragma solidity ^0.8.19;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { DigicharFactory } from "./DigicharFactory.sol";
 import { DigicharToken } from "./DigicharToken.sol";
 
 contract AuctionVault {
-    using SafeTransferLib for ERC20;
-
     error OnlyOwner();
     error AuctionClosed();
 
@@ -37,9 +34,8 @@ contract AuctionVault {
         emit DigicharTokenSet(_digicharToken);
     }
 
-    constructor(address _asset) {
+    constructor() {
         owner = msg.sender;
-        ASSET = ERC20(_asset);
     }
 
     uint256 auctionDurationTime = 4 hours;
@@ -51,13 +47,14 @@ contract AuctionVault {
         emit AuctionTimeChanged(_auctionDurationTime);
     }
 
-    struct BidPool {
+    struct Character {
         string characterURI;
         uint256 poolBalance;
+        bool isWinner;
     }
 
     struct Auction {
-        BidPool[3] characters;
+        Character[3] characters;
         uint256 endTime;
     }
 
@@ -69,8 +66,8 @@ contract AuctionVault {
         newAuction.endTime = block.timestamp + auctionDurationTime;
 
         for (uint8 i = 0; i < 3; i++) {
+            //@dev no need to set `poolBalance` or `isWinner` since both default to 0 and false respectively on initialization
             newAuction.characters[i].characterURI = characterURIs[i];
-            newAuction.characters[i].poolBalance = 0;
         }
 
         auctionId++;
@@ -93,34 +90,35 @@ contract AuctionVault {
 
     mapping(address => mapping(uint256 => mapping(uint8 => uint256))) public userBidBalance;
 
-    function bid(uint256 _amount, uint8 _characterIndex) public noReentrant {
-        if (auctions[auctionId].endTime >= block.timestamp) revert AuctionExpired();
-        if (_amount == 0) revert AmountZero();
+    function bid(uint8 _characterIndex) public payable noReentrant {
+        if (msg.value == 0) revert AmountZero();
+        if (block.timestamp >= auctions[auctionId].endTime) revert AuctionExpired();
 
         //@dev checking if characterURI being bid on is valid
         bytes memory characterURIbytes = bytes(auctions[auctionId].characters[_characterIndex].characterURI);
         if ((characterURIbytes).length == 0) revert InvalidCharacter();
 
-        ERC20(ASSET).safeTransferFrom(msg.sender, address(this), _amount);
-        userBidBalance[msg.sender][auctionId][_characterIndex] += _amount;
-        auctions[auctionId].characters[_characterIndex].poolBalance += _amount;
+        userBidBalance[msg.sender][auctionId][_characterIndex] += msg.value;
+        auctions[auctionId].characters[_characterIndex].poolBalance += msg.value;
 
-        emit BidPlaced(auctionId, msg.sender, _amount, _characterIndex);
+        emit BidPlaced(auctionId, msg.sender, msg.value, _characterIndex);
     }
 
     event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
 
     error AmountTooLarge();
 
-    function withdrawBid(uint256 _amount, uint8 _characterIndex) public {
-        if (auctions[auctionId].endTime >= block.timestamp) revert AuctionExpired();
+    function withdrawBid(uint256 _auctionId, uint8 _characterIndex, uint256 _amount) public {
         if (_amount == 0) revert AmountZero();
+        // @dev cannot withdraw bid from winning character bid pool as auction is complete by that point
+        if (auctions[_auctionId].characters[_characterIndex].isWinner) revert InvalidCharacter();
 
-        uint256 characterPoolBalance = userBidBalance[msg.sender][auctionId][_characterIndex];
-        if (_amount > characterPoolBalance) revert AmountTooLarge();
+        uint256 _userBalance = userBidBalance[msg.sender][_auctionId][_characterIndex];
+        if (_amount > _userBalance) revert AmountTooLarge();
 
-        ERC20(ASSET).safeTransfer(msg.sender, _amount);
-        userBidBalance[msg.sender][auctionId][_characterIndex] -= _amount;
+        (bool success,) = payable(msg.sender).call{ value: _amount }("");
+        require(success, "ETH transfer failed");
+        userBidBalance[msg.sender][_auctionId][_characterIndex] -= _amount;
         emit BidWithdrawn(auctionId, msg.sender, _amount);
     }
 
@@ -137,8 +135,9 @@ contract AuctionVault {
     error AuctionStillOpen();
 
     //@dev note: _winningCharacterIndex and _topBidder is determined from offchain indexing.
-    function closeCurrentAuction(uint256 _winningCharacterIndex, address _topBidder) public onlyOwner {
+    function closeCurrentAuction(uint8 _winningCharacterIndex, address _topBidder) public onlyOwner {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
+        auctions[auctionId].characters[_winningCharacterIndex].isWinner = true;
 
         string memory winningCharacterURI = auctions[auctionId].characters[_winningCharacterIndex].characterURI;
         // Get winning bid pool amount
