@@ -10,44 +10,72 @@ import { AuctionVault } from "./AuctionVault.sol";
 import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
 
 contract DigicharFactory {
-    error OnlyAuctionVault();
+    constructor(address _auctionVault) {
+        auctionVault = AuctionVault(_auctionVault);
+        owner = msg.sender;
+    }
 
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
+    }
+
+    //errors
+    error OnlyAuctionVault();
+    error OnlyOwner();
+
+    //events
+    event TargetDexUpdated(address _newTargetDex);
+    event DigicharOwnershipCertificateSet(address _digicharOwnershipCertificate);
+    event TokenCreated(address indexed _token, string _name, string _symbol);
+    event PairCreated(address indexed _token, address indexed _pair);
+    event SwapRouterSet(address indexed _swapRouter);
+    event SwapFactorySet(address indexed _swapFactory);
+    event LPInitialized(
+        address indexed _token, address indexed _pair, uint256 _amountToken, uint256 _amountEth, uint256 _liquidity
+    );
+    event Received(address, uint256);
+
+    //state variables
+    address public owner;
+    AuctionVault public auctionVault;
+    address targetDex; //@dev, need to surf around hyperevm and find which dex is best...
+    IUniswapV2Router02 swapRouter;
+    IUniswapV2Factory swapFactory;
+    DigicharOwnershipCertificate digicharOwnershipCertificate;
+
+    //modifiers
     modifier onlyAuctionVault() {
         if (msg.sender != address(auctionVault)) revert OnlyAuctionVault();
         _;
     }
-
-    error OnlyOwner();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert OnlyOwner();
         _;
     }
 
-    address public owner;
-    AuctionVault public auctionVault;
-    address targetDex; //@dev, need to surf around hyperevm and find which dex is best...
-
-    constructor(address _auctionVault) {
-        auctionVault = AuctionVault(_auctionVault);
-        owner = msg.sender;
+    //update state variables functions
+    function setSwapRouter(address _swapRouter) external onlyOwner {
+        swapRouter = IUniswapV2Router02(_swapRouter);
+        emit SwapRouterSet(_swapRouter);
     }
 
-    event TargetDexUpdated(address _newTargetDex);
+    function setSwapFactory(address _swapFactory) external onlyOwner {
+        swapFactory = IUniswapV2Factory(_swapFactory);
+        emit SwapFactorySet(_swapFactory);
+    }
 
     function updateTargetDex(address _newTargetDex) public onlyOwner {
         targetDex = _newTargetDex;
         emit TargetDexUpdated(_newTargetDex);
     }
 
-    DigicharOwnershipCertificate digicharOwnershipCertificate;
-
-    event DigicharOwnershipCertificateSet(address _digicharOwnershipCertificate);
-
     function setDigicharOwnershipCertificate(address _digicharOwnershipCertificate) external onlyOwner {
         digicharOwnershipCertificate = DigicharOwnershipCertificate(_digicharOwnershipCertificate);
         emit DigicharOwnershipCertificateSet(_digicharOwnershipCertificate);
     }
+
+    //contract core
 
     function createCharacter(
         address _winningBidder,
@@ -77,16 +105,14 @@ contract DigicharFactory {
             0,
             0
         );
-    }
 
-    event TokenCreated(address indexed _token, string _name, string _symbol);
+        //i want to now send the LP token to the zero address.. how do I do that?
+    }
 
     function createToken(string memory _name, string memory _symbol) private returns (address) {
         address tokenAddress = address(new DigicharToken(address(auctionVault), _name, _symbol));
         return tokenAddress;
     }
-
-    event PairCreated(address indexed _token, address indexed _pair);
 
     function createTokenPair(address _tokenAddress) private returns (address pair) {
         // Create swap pair
@@ -96,28 +122,6 @@ contract DigicharFactory {
 
         return (pair);
     }
-
-    IUniswapV2Router02 swapRouter;
-
-    event SwapRouterSet(address indexed _swapRouter);
-
-    function setSwapRouter(address _swapRouter) external onlyOwner {
-        swapRouter = IUniswapV2Router02(_swapRouter);
-        emit SwapRouterSet(_swapRouter);
-    }
-
-    IUniswapV2Factory swapFactory;
-
-    event SwapFactorySet(address indexed _swapFactory);
-
-    function setSwapFactory(address _swapFactory) external onlyOwner {
-        swapFactory = IUniswapV2Factory(_swapFactory);
-        emit SwapFactorySet(_swapFactory);
-    }
-
-    event LPInitialized(
-        address indexed _token, address indexed _pair, uint256 _amountToken, uint256 _amountEth, uint256 _liquidity
-    );
 
     function createLPforTokenPair(
         address token,
@@ -138,7 +142,7 @@ contract DigicharFactory {
             tokenAmount,
             tokenAmountMin,
             ethAmountMin,
-            msg.sender,
+            address(0), // Send LP tokens to zero address to lock liquidity
             block.timestamp + 1 //deadline
         );
 
@@ -152,11 +156,5 @@ contract DigicharFactory {
             require(success, "ETH transfer failed");
         }
         emit LPInitialized(token, pair, amountToken, amountETH, liquidity);
-    }
-
-    event Received(address, uint256);
-
-    receive() external payable {
-        emit Received(msg.sender, msg.value);
     }
 }

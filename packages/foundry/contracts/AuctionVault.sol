@@ -1,52 +1,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { DigicharFactory } from "./DigicharFactory.sol";
 import { DigicharToken } from "./DigicharToken.sol";
 
 contract AuctionVault {
+    constructor() {
+        owner = msg.sender;
+    }
+
+    //errors
     error OnlyOwner();
     error AuctionClosed();
+    error AmountZero();
+    error AuctionExpired();
+    error InvalidCharacter();
+    error AmountTooLarge();
+    error AuctionStillOpen();
 
+    //events
+    event AuctionTimeChanged(uint256 _auctionDurationTime);
+    event DigicharFactorySet(address _digicharFactory);
+    event DigicharTokenSet(address _digicharToken);
+    event BidPlaced(uint256 indexed _auctionId, address indexed _user, uint256 _amount, uint256 _characterId);
+    event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
+
+    //state variables
+    uint256 auctionDurationTime = 4 hours;
+    uint256 public auctionId;
+    bool private _locked; //@dev used only for noReentrant modifier
+    address public owner;
+    DigicharFactory digicharFactory;
+    DigicharToken digicharToken;
+
+    //mappings
+    mapping(uint256 => Auction) public auctions;
+    mapping(address => mapping(uint256 => mapping(uint8 => uint256))) public userBidBalance;
+
+    //modifiers
     modifier onlyOwner() {
         if (msg.sender != owner) revert OnlyOwner();
         _;
     }
 
-    //asset for vault deposits
-    ERC20 public immutable ASSET;
-    address public owner;
-    DigicharFactory digicharFactory;
-    DigicharToken digicharToken;
-
-    event DigicharFactorySet(address _digicharFactory);
-
-    function setDigicharFactory(address payable _digicharFactory) public onlyOwner {
-        digicharFactory = DigicharFactory(_digicharFactory);
-        emit DigicharFactorySet(_digicharFactory);
+    modifier noReentrant() {
+        if (_locked) revert("ReentrancyGuard: reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
     }
 
-    event DigicharTokenSet(address _digicharToken);
-
-    function setDigicharToken(address _digicharToken) public onlyOwner {
-        digicharToken = DigicharToken(_digicharToken);
-        emit DigicharTokenSet(_digicharToken);
-    }
-
-    constructor() {
-        owner = msg.sender;
-    }
-
-    uint256 auctionDurationTime = 4 hours;
-
-    event AuctionTimeChanged(uint256 _auctionDurationTime);
-
-    function changeAuctionDurationTime(uint256 _auctionDurationTime) public onlyOwner {
-        auctionDurationTime = _auctionDurationTime;
-        emit AuctionTimeChanged(_auctionDurationTime);
-    }
-
+    //structs
     struct Character {
         string characterURI;
         string name;
@@ -60,8 +64,22 @@ contract AuctionVault {
         uint256 endTime;
     }
 
-    mapping(uint256 => Auction) public auctions;
-    uint256 public auctionId;
+    //update state variable functions
+    function setDigicharFactory(address payable _digicharFactory) public onlyOwner {
+        digicharFactory = DigicharFactory(_digicharFactory);
+        emit DigicharFactorySet(_digicharFactory);
+    }
+
+    function setDigicharToken(address _digicharToken) public onlyOwner {
+        digicharToken = DigicharToken(_digicharToken);
+        emit DigicharTokenSet(_digicharToken);
+    }
+    //contract core
+
+    function changeAuctionDurationTime(uint256 _auctionDurationTime) public onlyOwner {
+        auctionDurationTime = _auctionDurationTime;
+        emit AuctionTimeChanged(_auctionDurationTime);
+    }
 
     function createAuction(string[3] memory characterURIs, string[3] memory names, string[3] memory symbols)
         public
@@ -80,23 +98,6 @@ contract AuctionVault {
         auctionId++;
     }
 
-    bool private _locked;
-
-    modifier noReentrant() {
-        if (_locked) revert("ReentrancyGuard: reentrant call");
-        _locked = true;
-        _;
-        _locked = false;
-    }
-
-    error AmountZero();
-    error AuctionExpired();
-    error InvalidCharacter();
-
-    event BidPlaced(uint256 indexed _auctionId, address indexed _user, uint256 _amount, uint256 _characterId);
-
-    mapping(address => mapping(uint256 => mapping(uint8 => uint256))) public userBidBalance;
-
     function bid(uint8 _characterIndex) public payable noReentrant {
         if (msg.value == 0) revert AmountZero();
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionExpired();
@@ -110,10 +111,6 @@ contract AuctionVault {
 
         emit BidPlaced(auctionId, msg.sender, msg.value, _characterIndex);
     }
-
-    event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
-
-    error AmountTooLarge();
 
     function withdrawBid(uint256 _auctionId, uint8 _characterIndex, uint256 _amount) public {
         if (_amount == 0) revert AmountZero();
@@ -139,8 +136,6 @@ contract AuctionVault {
     // 4. update state variables relating to character token data (erc721 address, erc20 address)
     // 5. update state variables relating to bidders token claim amounts (proportionate to bid size relative to total bid pool)
 
-    error AuctionStillOpen();
-
     //@dev note: _winningCharacterIndex and _topBidder is determined from offchain indexing.
     function closeCurrentAuction(address _topBidder, uint8 _winningCharacterIndex) public onlyOwner {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
@@ -164,6 +159,11 @@ contract AuctionVault {
         //@TODO
     }
 
+    //@dev this function should return a tokenAddress for the token, from the auction, and the userunclaimed tokens, if any
+    //@TODO
+    function getUserUnclaimedTokens(uint256 _auctionId) public view returns (string memory, uint256) { }
+
+    //getter functions
     function getPoolBalance(uint256 _auctionId, uint256 _characterIndex) external view returns (uint256) {
         return auctions[_auctionId].characters[_characterIndex].poolBalance;
     }
