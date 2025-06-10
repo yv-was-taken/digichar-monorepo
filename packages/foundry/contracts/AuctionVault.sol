@@ -49,6 +49,8 @@ contract AuctionVault {
 
     struct Character {
         string characterURI;
+        string name;
+        string symbol;
         uint256 poolBalance;
         bool isWinner;
     }
@@ -61,13 +63,18 @@ contract AuctionVault {
     mapping(uint256 => Auction) public auctions;
     uint256 public auctionId;
 
-    function createAuction(string[3] memory characterURIs) public onlyOwner {
+    function createAuction(string[3] memory characterURIs, string[3] memory names, string[3] memory symbols)
+        public
+        onlyOwner
+    {
         Auction storage newAuction = auctions[auctionId];
         newAuction.endTime = block.timestamp + auctionDurationTime;
 
         for (uint8 i = 0; i < 3; i++) {
             //@dev no need to set `poolBalance` or `isWinner` since both default to 0 and false respectively on initialization
             newAuction.characters[i].characterURI = characterURIs[i];
+            newAuction.characters[i].name = names[i];
+            newAuction.characters[i].symbol = symbols[i];
         }
 
         auctionId++;
@@ -135,17 +142,19 @@ contract AuctionVault {
     error AuctionStillOpen();
 
     //@dev note: _winningCharacterIndex and _topBidder is determined from offchain indexing.
-    function closeCurrentAuction(uint8 _winningCharacterIndex, address _topBidder) public onlyOwner {
+    function closeCurrentAuction(address _topBidder, uint8 _winningCharacterIndex) public onlyOwner {
         if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
         auctions[auctionId].characters[_winningCharacterIndex].isWinner = true;
 
         string memory winningCharacterURI = auctions[auctionId].characters[_winningCharacterIndex].characterURI;
+        string memory winningCharacterName = auctions[auctionId].characters[_winningCharacterIndex].name;
+        string memory winningCharacterSymbol = auctions[auctionId].characters[_winningCharacterIndex].symbol;
         // Get winning bid pool amount
         uint256 winningPoolBalance = auctions[auctionId].characters[_winningCharacterIndex].poolBalance;
 
         // Create character, sending winning pool balance for token creation
         digicharFactory.createCharacter{ value: winningPoolBalance }(
-            _topBidder, _winningCharacterIndex, winningCharacterURI
+            _topBidder, _winningCharacterIndex, winningCharacterURI, winningCharacterName, winningCharacterSymbol
         );
         auctionId++;
     }

@@ -10,3 +10,9 @@
 [submodule "packages/foundry/lib/solmate"]
 	path = packages/foundry/lib/solmate
 	url = https://github.com/transmissions11/solmate
+[submodule "packages/foundry/lib/v2-core"]
+	path = packages/foundry/lib/v2-core
+	url = https://github.com/Uniswap/v2-core
+[submodule "packages/foundry/lib/v2-periphery"]
+	path = packages/foundry/lib/v2-periphery
+	url = https://github.com/Uniswap/v2-periphery
