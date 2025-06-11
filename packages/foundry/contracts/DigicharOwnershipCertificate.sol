@@ -38,10 +38,11 @@ contract DigicharOwnershipCertificate is ERC721 {
     }
 
     //contract core
-    function mint(address _to, string memory _tokenURI) public onlyDigicharFactory {
+    function mint(address _to, string memory _tokenURI) public onlyDigicharFactory returns (uint256) {
         _safeMint(_to, tokenId);
         _setTokenURI(tokenId, _tokenURI);
         emit OwnershipCertificateMinted(_to, tokenId, _tokenURI);
         tokenId++;
+        return tokenId - 1;
     }
 }

@@ -84,7 +84,7 @@ contract AuctionVault {
         emit DigicharFactorySet(_digicharFactory);
     }
 
-    function setDigicharToken(address _digicharToken) public onlyOwner {
+    function setDigicharToken(address payable _digicharToken) public onlyOwner {
         digicharToken = DigicharToken(_digicharToken);
         emit DigicharTokenSet(_digicharToken);
     }

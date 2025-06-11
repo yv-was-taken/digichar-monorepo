@@ -89,7 +89,7 @@ contract DigicharFactory {
         string memory _characterSymbol
     ) external payable onlyAuctionVault returns (address) {
         //@dev mint character nft and send them ownership certificate
-        digicharOwnershipCertificate.mint(_winningBidder, _characterTokenURI);
+        uint256 _ownershipCertificateTokenId = digicharOwnershipCertificate.mint(_winningBidder, _characterTokenURI);
 
         //@dev create character token using LP from winning bid pool to DigicharFactory
         uint256 _auctionId = auctionVault.auctionId();
@@ -97,10 +97,12 @@ contract DigicharFactory {
         uint256 winningPoolBalance = auctionVault.getPoolBalance(_auctionId, _winningCharacterIndex);
         if (msg.value != winningPoolBalance) revert InsufficientBalance();
 
-        address _tokenAddress = createToken(_characterName, _characterSymbol);
+        address _tokenAddress = createToken(
+            address(auctionVault), _ownershipCertificateTokenId, _characterName, _characterSymbol, address(swapRouter)
+        );
         address _pairAddress = createTokenPair(_tokenAddress);
         createLPforTokenPair(
-            _tokenAddress,
+            payable(_tokenAddress),
             _pairAddress,
             //@dev locking half of total supply in LP
             // this amount needs to be played with to find a good starting value
@@ -117,8 +119,15 @@ contract DigicharFactory {
         return _tokenAddress;
     }
 
-    function createToken(string memory _name, string memory _symbol) private returns (address) {
-        address tokenAddress = address(new DigicharToken(address(auctionVault), _name, _symbol));
+    function createToken(
+        address _auctionVault,
+        uint256 _ownershipCertificateTokenId,
+        string memory _name,
+        string memory _symbol,
+        address _swapRouter
+    ) private returns (address) {
+        address tokenAddress =
+            address(new DigicharToken(_auctionVault, _ownershipCertificateTokenId, _name, _symbol, _swapRouter));
         return tokenAddress;
     }
 
@@ -132,7 +141,7 @@ contract DigicharFactory {
     }
 
     function createLPforTokenPair(
-        address token,
+        address payable token,
         address pair,
         uint256 tokenAmount, //@dev should be fetched from contract config
         uint256 tokenAmountMin, //@dev should be fetched from contract config
