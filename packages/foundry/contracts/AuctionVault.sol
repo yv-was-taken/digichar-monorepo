@@ -217,6 +217,6 @@ contract AuctionVault {
         view
         returns (uint256)
     {
-        return userBidBalance[_user][auctionId][_characterIndex];
+        return userBidBalance[_user][_auctionId][_characterIndex];
     }
 }

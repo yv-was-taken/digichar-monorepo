@@ -25,6 +25,7 @@ contract DigicharFactory {
     //errors
     error OnlyAuctionVault();
     error OnlyOwner();
+    error InsufficientBalance();
 
     //events
     event TargetDexUpdated(address _newTargetDex);
@@ -92,9 +93,10 @@ contract DigicharFactory {
 
         //@dev create character token using LP from winning bid pool to DigicharFactory
         uint256 _auctionId = auctionVault.auctionId();
-        uint256 winningPoolBalance = auctionVault.getPoolBalance(_auctionId, _winningCharacterIndex);
 
-        //@TODO create token pair, create LP using `winningPoolBalance`, lock LP by sending LP to zero address
+        uint256 winningPoolBalance = auctionVault.getPoolBalance(_auctionId, _winningCharacterIndex);
+        if (msg.value != winningPoolBalance) revert InsufficientBalance();
+
         address _tokenAddress = createToken(_characterName, _characterSymbol);
         address _pairAddress = createTokenPair(_tokenAddress);
         createLPforTokenPair(
@@ -109,7 +111,8 @@ contract DigicharFactory {
             0
         );
         //@dev now that LP is created (and burned), send rest of tokens back to auction vault for token claim.
-        ERC20(_tokenAddress).safeTransfer(address(auctionVault), 500_000 * 10 ** 18); // @TODO extract token supply metrics to contract config
+        // @TODO extract token supply metrics to contract config
+        ERC20(_tokenAddress).safeTransfer(address(auctionVault), 500_000 * 10 ** 18);
 
         return _tokenAddress;
     }
