@@ -102,7 +102,7 @@ contract DigicharFactory {
         );
         address _pairAddress = createTokenPair(_tokenAddress);
         createLPforTokenPair(
-            payable(_tokenAddress),
+            _tokenAddress,
             _pairAddress,
             //@dev locking half of total supply in LP
             // this amount needs to be played with to find a good starting value
@@ -141,7 +141,7 @@ contract DigicharFactory {
     }
 
     function createLPforTokenPair(
-        address payable token,
+        address token,
         address pair,
         uint256 tokenAmount, //@dev should be fetched from contract config
         uint256 tokenAmountMin, //@dev should be fetched from contract config

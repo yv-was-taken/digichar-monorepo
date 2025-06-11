@@ -6,13 +6,6 @@ import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
 import { IUniswapV2Router02 } from "v2-periphery/interfaces/IUniswapV2Router02.sol";
 
-interface IWETH {
-    function deposit() external payable;
-    function withdraw(uint256) external;
-    function transfer(address to, uint256 value) external returns (bool);
-    function balanceOf(address) external view returns (uint256);
-}
-
 contract DigicharToken is ERC20 {
     using SafeTransferLib for ERC20;
     //@TODO rename `auctionVault` to `protocol`
@@ -35,7 +28,7 @@ contract DigicharToken is ERC20 {
 
     // DEX integration
     IUniswapV2Router02 public immutable swapRouter;
-    IWETH public immutable WETH;
+    ERC20 public immutable WETH;
     address public liquidityPool; // The main trading pair for this token
 
     // Whitelist for tax exemptions (LP contracts, etc.)
@@ -88,7 +81,7 @@ contract DigicharToken is ERC20 {
         //ownershipCertificate = DigicharOwnershipCertificate(_ownershipCertificate);
         ownershipCertificateTokenId = _ownershipCertificateTokenId;
         swapRouter = IUniswapV2Router02(_swapRouter);
-        WETH = IWETH(IUniswapV2Router02(_swapRouter).WETH());
+        WETH = ERC20(IUniswapV2Router02(_swapRouter).WETH());
 
         // Exempt creator and vault from taxes
         //@dev owner of ownership certificate needs to be checked if tax exempt on every transfer
@@ -146,29 +139,29 @@ contract DigicharToken is ERC20 {
         uint256 lpLockTokens = (protocolTax * LP_LOCK_BPS) / PROTOCOL_TAX_BPS;
         uint256 vaultTokens = protocolTax - lpLockTokens;
 
-        // Convert vault portion and creator tax to ETH
+        // Convert vault portion and creator tax to WETH
         uint256 tokensToSwap = vaultTokens + creatorTax;
-        uint256 ethReceived = 0;
+        uint256 wethReceived = 0;
 
         if (tokensToSwap > 0) {
-            ethReceived = _swapTokensForETH(tokensToSwap);
+            wethReceived = _swapTokensForWETH(tokensToSwap);
         }
 
-        if (ethReceived > 0) {
-            // Calculate ETH distribution
-            uint256 vaultEth = (ethReceived * vaultTokens) / tokensToSwap;
-            uint256 creatorEth = ethReceived - vaultEth;
+        if (wethReceived > 0) {
+            // Calculate WETH distribution
+            uint256 vaultWeth = (wethReceived * vaultTokens) / tokensToSwap;
+            uint256 creatorWeth = wethReceived - vaultWeth;
 
-            // Distribute ETH
-            if (vaultEth > 0) {
-                _safeTransferETH(auctionVault, vaultEth);
-                emit TaxCollected(from, auctionVault, vaultTokens, vaultEth);
+            // Distribute WETH
+            if (vaultWeth > 0) {
+                WETH.safeTransfer(auctionVault, vaultWeth);
+                emit TaxCollected(from, auctionVault, vaultTokens, vaultWeth);
             }
 
-            if (creatorEth > 0) {
+            if (creatorWeth > 0) {
                 address ownershipCertificateOwner = getOwnershipCertificateOwner();
-                _safeTransferETH(ownershipCertificateOwner, creatorEth);
-                emit TaxCollected(from, ownershipCertificateOwner, creatorTax, creatorEth);
+                WETH.safeTransfer(ownershipCertificateOwner, creatorWeth);
+                emit TaxCollected(from, ownershipCertificateOwner, creatorTax, creatorWeth);
             }
         }
 
@@ -178,7 +171,7 @@ contract DigicharToken is ERC20 {
         }
     }
 
-    function _swapTokensForETH(uint256 tokenAmount) internal returns (uint256) {
+    function _swapTokensForWETH(uint256 tokenAmount) internal returns (uint256) {
         if (tokenAmount == 0) return 0;
 
         // Approve router to spend tokens
@@ -189,14 +182,14 @@ contract DigicharToken is ERC20 {
         path[0] = address(this);
         path[1] = address(WETH);
 
-        try swapRouter.swapExactTokensForETH(
+        try swapRouter.swapExactTokensForTokens(
             tokenAmount,
-            0, // Accept any amount of ETH
+            0, // Accept any amount of WETH
             path,
             address(this),
             block.timestamp + 300
         ) returns (uint256[] memory amounts) {
-            return amounts[1]; // Return ETH amount
+            return amounts[1]; // Return WETH amount
         } catch {
             // If swap fails, return 0 (tax tokens remain in contract)
             return 0;
@@ -206,29 +199,32 @@ contract DigicharToken is ERC20 {
     function _lockLiquidity(uint256 tokenAmount) internal {
         if (tokenAmount == 0 || liquidityPool == address(0)) return;
 
-        // Split tokens: half to swap for ETH, half to pair with that ETH
+        // Split tokens: half to swap for WETH, half to pair with that WETH
         uint256 halfTokens = tokenAmount / 2;
         uint256 otherHalf = tokenAmount - halfTokens;
 
-        // Swap half tokens for ETH
-        uint256 ethForLP = _swapTokensForETH(halfTokens);
+        // Swap half tokens for WETH
+        uint256 wethForLP = _swapTokensForWETH(halfTokens);
 
-        if (ethForLP > 0) {
+        if (wethForLP > 0) {
             // Add liquidity (LP tokens are burned by sending to dead address)
-            _addLiquidityAndBurn(otherHalf, ethForLP);
-            emit LiquidityLocked(tokenAmount, ethForLP);
+            _addLiquidityAndBurn(otherHalf, wethForLP);
+            emit LiquidityLocked(tokenAmount, wethForLP);
         }
     }
 
-    function _addLiquidityAndBurn(uint256 tokenAmount, uint256 ethAmount) internal {
+    function _addLiquidityAndBurn(uint256 tokenAmount, uint256 wethAmount) internal {
         // Approve router to spend tokens
         approve(address(swapRouter), tokenAmount);
+        WETH.approve(address(swapRouter), wethAmount);
 
-        try swapRouter.addLiquidityETH{ value: ethAmount }(
+        try swapRouter.addLiquidity(
             address(this),
+            address(WETH),
             tokenAmount,
+            wethAmount,
             0, // Accept any amount of tokens
-            0, // Accept any amount of ETH
+            0, // Accept any amount of WETH
             address(0xdead), // Send LP tokens to dead address (permanent lock)
             block.timestamp + 300
         ) {
@@ -251,13 +247,5 @@ contract DigicharToken is ERC20 {
 
         // Apply tax if interacting with a known DEX
         return isDEX[from] || isDEX[to];
-    }
-
-    receive() external payable { }
-
-    function _safeTransferETH(address to, uint256 amount) internal {
-        if (amount == 0) return;
-
-        SafeTransferLib.safeTransferETH(to, amount);
     }
 }
