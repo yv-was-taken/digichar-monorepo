@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
 import { IUniswapV2Router02 } from "v2-periphery/interfaces/IUniswapV2Router02.sol";
 
@@ -13,7 +14,9 @@ interface IWETH {
 }
 
 contract DigicharToken is ERC20 {
+    using SafeTransferLib for ERC20;
     //@TODO rename `auctionVault` to `protocol`
+
     address public immutable auctionVault;
     DigicharOwnershipCertificate public immutable ownershipCertificate; //@TODO extract to contract config
     uint256 public immutable ownershipCertificateTokenId;
@@ -255,7 +258,6 @@ contract DigicharToken is ERC20 {
     function _safeTransferETH(address to, uint256 amount) internal {
         if (amount == 0) return;
 
-        (bool success,) = to.call{ value: amount }("");
-        require(success, "ETH transfer failed");
+        SafeTransferLib.safeTransferETH(to, amount);
     }
 }
