@@ -5,11 +5,12 @@ import { DigicharFactory } from "./DigicharFactory.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { DigicharToken } from "./DigicharToken.sol";
+import { Config } from "./Config.sol";
 
-contract AuctionVault {
+contract AuctionVault is Config {
     using SafeTransferLib for ERC20;
 
-    constructor() {
+    constructor() Config(protocolAdmin) {
         owner = msg.sender;
     }
 
@@ -31,7 +32,6 @@ contract AuctionVault {
     event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
 
     //state variables
-    uint256 auctionDurationTime = 4 hours;
     uint256 public auctionId;
     bool private _locked; //@dev used only for noReentrant modifier
     address public owner;
@@ -78,6 +78,10 @@ contract AuctionVault {
         uint256 endTime;
     }
 
+    function getCurrentAuctionEndTime() public view returns (uint256) {
+        return auctions[auctionId].endTime;
+    }
+
     //update state variable functions
     function setDigicharFactory(address payable _digicharFactory) public onlyOwner {
         digicharFactory = DigicharFactory(_digicharFactory);
@@ -90,17 +94,13 @@ contract AuctionVault {
     }
     //contract core
 
-    function changeAuctionDurationTime(uint256 _auctionDurationTime) public onlyOwner {
-        auctionDurationTime = _auctionDurationTime;
-        emit AuctionTimeChanged(_auctionDurationTime);
-    }
-
     function createAuction(string[3] memory characterURIs, string[3] memory names, string[3] memory symbols)
         public
         onlyOwner
     {
+        auctionId++;
         Auction storage newAuction = auctions[auctionId];
-        newAuction.endTime = block.timestamp + auctionDurationTime;
+        newAuction.endTime = block.timestamp + AUCTION_DURATION_TIME;
 
         for (uint8 i = 0; i < 3; i++) {
             //@dev no need to set `poolBalance` or `isWinner` since both default to 0 and false respectively on initialization
@@ -108,13 +108,11 @@ contract AuctionVault {
             newAuction.characters[i].name = names[i];
             newAuction.characters[i].symbol = symbols[i];
         }
-
-        auctionId++;
     }
 
     function bid(uint8 _characterIndex) public payable noReentrant {
         if (msg.value == 0) revert AmountZero();
-        if (block.timestamp >= auctions[auctionId].endTime) revert AuctionExpired();
+        if (block.timestamp >= getCurrentAuctionEndTime()) revert AuctionExpired();
 
         //@dev checking if characterURI being bid on is valid
         bytes memory characterURIbytes = bytes(auctions[auctionId].characters[_characterIndex].characterURI);
@@ -153,7 +151,7 @@ contract AuctionVault {
     //@dev note: _winningCharacterIndex and _topBidder is determined from offchain indexing.
 
     function closeCurrentAuction(address _topBidder, uint8 _winningCharacterIndex) public onlyOwner {
-        if (block.timestamp >= auctions[auctionId].endTime) revert AuctionStillOpen();
+        if (block.timestamp < auctions[auctionId].endTime) revert AuctionStillOpen();
         auctions[auctionId].characters[_winningCharacterIndex].isWinner = true;
         winningCharacterIndexesForEachAuction[auctionId] = _winningCharacterIndex;
 

@@ -26,7 +26,7 @@ contract DigicharToken is ERC20, Config {
     event TaxExemptionSet(address indexed account, bool exempt);
     event LiquidityLocked(uint256 tokenAmount, uint256 ethAmount);
 
-    function getOwnershipCertificateOwner() private view returns (address) {
+    function getOwnershipCertificateOwner() public view returns (address) {
         address ownershipCertificateOwner = ownershipCertificate.ownerOf(ownershipCertificateTokenId);
         return ownershipCertificateOwner;
     }

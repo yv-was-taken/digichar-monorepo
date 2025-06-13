@@ -5,6 +5,8 @@ import { ERC721 } from "solmate/tokens/ERC721.sol";
 import { DigicharFactory } from "./DigicharFactory.sol";
 
 contract DigicharOwnershipCertificate is ERC721 {
+    //@dev why does _digicharFactory need to be payable? it shouldn't be...
+    // outside the scope of current ticket though..  @TODO :)
     constructor(address payable _digicharFactory) ERC721("Digichar Ownership Certificate", "DCO") {
         digicharFactory = DigicharFactory(_digicharFactory);
     }
@@ -22,8 +24,8 @@ contract DigicharOwnershipCertificate is ERC721 {
     }
     //state variables
 
-    uint256 tokenId;
-    DigicharFactory digicharFactory;
+    uint256 public tokenId;
+    DigicharFactory public digicharFactory;
     //mappings
     mapping(uint256 => string) public tokenURIs;
 

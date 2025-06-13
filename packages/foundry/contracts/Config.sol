@@ -6,6 +6,7 @@ import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol
 import { IUniswapV2Router02 } from "v2-periphery/interfaces/IUniswapV2Router02.sol";
 
 contract Config {
+    //@TODO get rid of constructor arg and set protocol admin as msg.sender
     constructor(address _protocolAdmin) {
         _protocolAdmin = protocolAdmin;
     }
@@ -20,15 +21,23 @@ contract Config {
     address protocolAdmin;
 
     //immutable constants
-    uint256 constant INITIAL_CHARACTER_TOKEN_SUPPLY = 1_000_000;
-    uint256 constant CHARACTER_TOKEN_DECIMALS = 18;
-    DigicharOwnershipCertificate ownershipCertificate;
+    uint256 public constant INITIAL_CHARACTER_TOKEN_SUPPLY = 1_000_000;
+    uint256 public constant CHARACTER_TOKEN_DECIMALS = 18;
+    DigicharOwnershipCertificate public ownershipCertificate;
     uint256 public constant BASIS_POINTS = 10_000;
 
     // Tax configuration
     uint256 public PROTOCOL_ADMIN_TAX_BPS = 100; // 1%
     uint256 public CHARACTER_OWNER_TAX_BPS = 100; // 1%
     uint256 public LP_LOCK_BPS = 75; // 0.75%
+    uint256 public AUCTION_DURATION_TIME = 4 hours;
+
+    event AuctionDurationSet(address indexed _protocolAdmin, uint256 indexed _auctionDuration);
+
+    function setAuctionDuration(uint256 _auctionDuration) external onlyProtocolAdmin {
+        AUCTION_DURATION_TIME = _auctionDuration;
+        emit AuctionDurationSet(protocolAdmin, _auctionDuration);
+    }
 
     //dex addresses
     IUniswapV2Router02 swapRouter;
