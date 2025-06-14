@@ -4,18 +4,19 @@ pragma solidity ^0.8.19;
 import { DigicharFactory } from "./DigicharFactory.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { DigicharToken } from "./DigicharToken.sol";
 import { Config } from "./Config.sol";
 
-contract AuctionVault is Config {
+contract AuctionVault {
     using SafeTransferLib for ERC20;
 
-    constructor() Config(protocolAdmin) {
-        owner = msg.sender;
+    Config config;
+
+    constructor(address _config) {
+        config = Config(_config);
     }
 
     //errors
-    error OnlyOwner();
+    error OnlyProtocolAdmin();
     error AuctionClosed();
     error AmountZero();
     error AuctionExpired();
@@ -34,9 +35,10 @@ contract AuctionVault is Config {
     //state variables
     uint256 public auctionId;
     bool private _locked; //@dev used only for noReentrant modifier
-    address public owner;
+
+    //update state variable functions
+    //@TODO should be defined in (and grabbed from) config
     DigicharFactory digicharFactory;
-    DigicharToken digicharToken;
     //@dev extract token metric constants to contract config
     uint256 initialTokenSupplyForEachCharacter = 500_000 * 1 * 10 ** 18;
 
@@ -52,8 +54,8 @@ contract AuctionVault is Config {
     mapping(uint256 => uint8) winningCharacterIndexesForEachAuction;
 
     //modifiers
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert OnlyOwner();
+    modifier onlyProtcolAdmin() {
+        if (msg.sender != config.protocolAdmin()) revert OnlyProtocolAdmin();
         _;
     }
 
@@ -83,24 +85,21 @@ contract AuctionVault is Config {
     }
 
     //update state variable functions
-    function setDigicharFactory(address payable _digicharFactory) public onlyOwner {
+    //@TODO should be defined in (and grabbed from) config
+    function setDigicharFactory(address payable _digicharFactory) public onlyProtcolAdmin {
         digicharFactory = DigicharFactory(_digicharFactory);
         emit DigicharFactorySet(_digicharFactory);
     }
 
-    function setDigicharToken(address payable _digicharToken) public onlyOwner {
-        digicharToken = DigicharToken(_digicharToken);
-        emit DigicharTokenSet(_digicharToken);
-    }
     //contract core
 
     function createAuction(string[3] memory characterURIs, string[3] memory names, string[3] memory symbols)
         public
-        onlyOwner
+        onlyProtcolAdmin
     {
         auctionId++;
         Auction storage newAuction = auctions[auctionId];
-        newAuction.endTime = block.timestamp + AUCTION_DURATION_TIME;
+        newAuction.endTime = block.timestamp + config.AUCTION_DURATION_TIME();
 
         for (uint8 i = 0; i < 3; i++) {
             //@dev no need to set `poolBalance` or `isWinner` since both default to 0 and false respectively on initialization
@@ -150,7 +149,7 @@ contract AuctionVault is Config {
 
     //@dev note: _winningCharacterIndex and _topBidder is determined from offchain indexing.
 
-    function closeCurrentAuction(address _topBidder, uint8 _winningCharacterIndex) public onlyOwner {
+    function closeCurrentAuction(address _topBidder, uint8 _winningCharacterIndex) public onlyProtcolAdmin {
         if (block.timestamp < auctions[auctionId].endTime) revert AuctionStillOpen();
         auctions[auctionId].characters[_winningCharacterIndex].isWinner = true;
         winningCharacterIndexesForEachAuction[auctionId] = _winningCharacterIndex;

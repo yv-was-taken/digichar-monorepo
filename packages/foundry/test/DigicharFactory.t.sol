@@ -6,6 +6,7 @@ import "../contracts/DigicharFactory.sol";
 import "../contracts/AuctionVault.sol";
 import "../contracts/DigicharOwnershipCertificate.sol";
 import "../contracts/DigicharToken.sol";
+import "../contracts/Config.sol";
 //import "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 import "v2-core/interfaces/IUniswapV2Factory.sol";
 import "v2-periphery/interfaces/IUniswapV2Router02.sol";
@@ -104,12 +105,12 @@ contract DigicharFactoryTest is Test {
     DigicharFactory public factory;
     AuctionVault public auctionVault;
     DigicharOwnershipCertificate public ownershipCertificate;
+    Config public config;
     MockUniswapV2Factory public mockSwapFactory;
     MockUniswapV2Router public mockSwapRouter;
     ERC20 public mockWETH;
 
-    address public owner = address(0x1);
-    address public protocolAdmin = address(0x2);
+    address public protocolAdmin = address(0x1);
     address public user1 = address(0x3);
     address public user2 = address(0x4);
 
@@ -124,84 +125,25 @@ contract DigicharFactoryTest is Test {
     event Received(address, uint256);
 
     function setUp() public {
-        vm.startPrank(owner);
+        vm.startPrank(protocolAdmin);
 
         // Deploy mock contracts
         mockWETH = new CustomCoin();
         mockSwapFactory = new MockUniswapV2Factory();
         mockSwapRouter = new MockUniswapV2Router(address(mockWETH));
 
+        config = new Config();
+
         // Deploy AuctionVault first
-        auctionVault = new AuctionVault();
+        auctionVault = new AuctionVault(address(config));
 
         // Deploy factory
-        factory = new DigicharFactory(address(auctionVault));
+        factory = new DigicharFactory(address(config));
 
         // Deploy ownership certificate
         ownershipCertificate = new DigicharOwnershipCertificate(payable(address(factory)));
 
-        // Set up factory dependencies
-        factory.setSwapFactory(address(mockSwapFactory));
-        factory.setDigicharOwnershipCertificate(address(ownershipCertificate));
-        factory.setWETH(address(mockWETH));
-        factory.setSwapRouter(address(mockSwapRouter));
-
-        // Set up auction vault
-        auctionVault.setDigicharFactory(payable(address(factory)));
-
         vm.stopPrank();
-    }
-
-    function testConstructor() public {
-        assertEq(factory.owner(), owner);
-        assertEq(address(factory.auctionVault()), address(auctionVault));
-    }
-
-    function testSetSwapFactory() public {
-        address newFactory = address(0x999);
-
-        vm.prank(owner);
-        vm.expectEmit(true, false, false, false);
-        emit SwapFactorySet(newFactory);
-        factory.setSwapFactory(newFactory);
-
-        // Verify the factory was set (we can't directly access it, but we can test behavior)
-    }
-
-    function testSetSwapFactoryOnlyOwner() public {
-        vm.prank(user1);
-        vm.expectRevert(DigicharFactory.OnlyOwner.selector);
-        factory.setSwapFactory(address(0x999));
-    }
-
-    function testUpdateTargetDex() public {
-        address newDex = address(0x888);
-
-        vm.prank(owner);
-        vm.expectEmit(false, false, false, true);
-        emit TargetDexUpdated(newDex);
-        factory.updateTargetDex(newDex);
-    }
-
-    function testUpdateTargetDexOnlyOwner() public {
-        vm.prank(user1);
-        vm.expectRevert(DigicharFactory.OnlyOwner.selector);
-        factory.updateTargetDex(address(0x888));
-    }
-
-    function testSetDigicharOwnershipCertificate() public {
-        address newCertificate = address(0x777);
-
-        vm.prank(owner);
-        vm.expectEmit(false, false, false, true);
-        emit DigicharOwnershipCertificateSet(newCertificate);
-        factory.setDigicharOwnershipCertificate(newCertificate);
-    }
-
-    function testSetDigicharOwnershipCertificateOnlyOwner() public {
-        vm.prank(user1);
-        vm.expectRevert(DigicharFactory.OnlyOwner.selector);
-        factory.setDigicharOwnershipCertificate(address(0x777));
     }
 
     function testReceiveEther() public {
@@ -223,13 +165,13 @@ contract DigicharFactoryTest is Test {
 
     function testCreateCharacterInsufficientBalance() public {
         // Set up auction vault to have a different pool balance
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
 
         string[3] memory uris = ["uri1", "uri2", "uri3"];
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         // Simulate a bid to create pool balance
@@ -245,13 +187,13 @@ contract DigicharFactoryTest is Test {
 
     function testCreateCharacterSuccess() public {
         // Set up auction vault
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
 
         string[3] memory uris = ["uri1", "uri2", "uri3"];
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         // Simulate a bid
@@ -263,7 +205,7 @@ contract DigicharFactoryTest is Test {
         vm.warp(block.timestamp + 2 hours);
 
         // Close auction
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
         // Get the created token address
@@ -285,7 +227,7 @@ contract DigicharFactoryTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         // Try to create character with 0 value (should fail in createCharacter due to InsufficientBalance)
@@ -304,7 +246,7 @@ contract DigicharFactoryTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.deal(user1, 2 ether);
@@ -313,7 +255,7 @@ contract DigicharFactoryTest is Test {
 
         vm.warp(block.timestamp + 2 hours);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
         // Verify LP was created successfully
@@ -326,7 +268,7 @@ contract DigicharFactoryTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.deal(user1, 3 ether);
@@ -337,7 +279,7 @@ contract DigicharFactoryTest is Test {
 
         uint256 protocolAdminBalanceBefore = protocolAdmin.balance;
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
         // Check that excess ETH was sent to protocol admin
@@ -353,7 +295,7 @@ contract DigicharFactoryTest is Test {
         string[3] memory names1 = ["name1", "name2", "name3"];
         string[3] memory symbols1 = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris1, names1, symbols1);
 
         vm.deal(user1, 2 ether);
@@ -362,7 +304,7 @@ contract DigicharFactoryTest is Test {
 
         vm.warp(block.timestamp + 2 hours);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
         address token1 = auctionVault.getCharacterTokenAddress(0);
@@ -372,7 +314,7 @@ contract DigicharFactoryTest is Test {
         string[3] memory names2 = ["name4", "name5", "name6"];
         string[3] memory symbols2 = ["SYM4", "SYM5", "SYM6"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris2, names2, symbols2);
 
         vm.deal(user2, 2 ether);
@@ -381,7 +323,7 @@ contract DigicharFactoryTest is Test {
 
         vm.warp(block.timestamp + 2 hours);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, 1);
 
         address token2 = auctionVault.getCharacterTokenAddress(1);
@@ -403,7 +345,7 @@ contract DigicharFactoryTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.deal(user1, 2 ether);
@@ -412,7 +354,7 @@ contract DigicharFactoryTest is Test {
 
         vm.warp(block.timestamp + 2 hours);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
         // Verify ownership certificate was minted
@@ -428,7 +370,7 @@ contract DigicharFactoryTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.deal(user1, bidAmount + 1 ether);
@@ -437,31 +379,10 @@ contract DigicharFactoryTest is Test {
 
         vm.warp(block.timestamp + 2 hours);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
         address tokenAddress = auctionVault.getCharacterTokenAddress(0);
         assertTrue(tokenAddress != address(0));
-    }
-
-    function testAccessControlModifiers() public {
-        // Test all functions that should revert for non-owners
-        vm.startPrank(user1);
-
-        vm.expectRevert(DigicharFactory.OnlyOwner.selector);
-        factory.setSwapFactory(address(0x123));
-
-        vm.expectRevert(DigicharFactory.OnlyOwner.selector);
-        factory.updateTargetDex(address(0x123));
-
-        vm.expectRevert(DigicharFactory.OnlyOwner.selector);
-        factory.setDigicharOwnershipCertificate(address(0x123));
-
-        vm.stopPrank();
-
-        // Test function that should revert for non-auction vault
-        vm.prank(user1);
-        vm.expectRevert(DigicharFactory.OnlyAuctionVault.selector);
-        factory.createCharacter{ value: 1 ether }(user1, 0, "uri", "name", "symbol");
     }
 }

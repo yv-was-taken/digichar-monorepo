@@ -3,12 +3,13 @@ pragma solidity ^0.8.19;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
 import { Config } from "./Config.sol";
 import { IUniswapV2Router02 } from "v2-periphery/interfaces/IUniswapV2Router02.sol";
 
-contract DigicharToken is ERC20, Config {
+contract DigicharToken is ERC20 {
     using SafeTransferLib for ERC20;
+
+    Config public config;
 
     uint256 public immutable ownershipCertificateTokenId;
 
@@ -27,21 +28,26 @@ contract DigicharToken is ERC20, Config {
     event LiquidityLocked(uint256 tokenAmount, uint256 ethAmount);
 
     function getOwnershipCertificateOwner() public view returns (address) {
-        address ownershipCertificateOwner = ownershipCertificate.ownerOf(ownershipCertificateTokenId);
+        address ownershipCertificateOwner = config.ownershipCertificate().ownerOf(ownershipCertificateTokenId);
         return ownershipCertificateOwner;
     }
 
+    //@dev under what use cases is this modifier relevant?
     modifier onlyCharacterOwnerOrProtocolAdmin() {
         address ownershipCertificateOwner = getOwnershipCertificateOwner();
 
-        require(msg.sender == ownershipCertificateOwner || msg.sender == protocolAdmin, "Unauthorized");
+        require(msg.sender == ownershipCertificateOwner || msg.sender == config.protocolAdmin(), "Unauthorized");
         _;
     }
 
-    constructor(uint256 _ownershipCertificateTokenId, string memory _name, string memory _symbol)
-        ERC20(_name, _symbol, 18)
-        Config(protocolAdmin)
-    {
+    constructor(
+        address _config,
+        uint256 _ownershipCertificateTokenId,
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals
+    ) ERC20(_name, _symbol, _decimals) {
+        config = Config(_config);
         ownershipCertificateTokenId = _ownershipCertificateTokenId;
 
         taxExempt[address(this)] = true;
@@ -67,8 +73,8 @@ contract DigicharToken is ERC20, Config {
         }
 
         // Calculate tax amounts
-        uint256 ownerTax = (amount * PROTOCOL_ADMIN_TAX_BPS) / BASIS_POINTS;
-        uint256 creatorTax = (amount * CHARACTER_OWNER_TAX_BPS) / BASIS_POINTS;
+        uint256 ownerTax = (amount * config.PROTOCOL_ADMIN_TAX_BPS()) / config.BASIS_POINTS();
+        uint256 creatorTax = (amount * config.CHARACTER_OWNER_TAX_BPS()) / config.BASIS_POINTS();
         uint256 totalTax = ownerTax + creatorTax;
         uint256 transferAmount = amount - totalTax;
 
@@ -91,7 +97,7 @@ contract DigicharToken is ERC20, Config {
         if (totalTax == 0) return;
 
         // Split owner tax: 0.75% for LP lock, 0.25% for vault
-        uint256 lpLockTokens = (ownerTax * LP_LOCK_BPS) / PROTOCOL_ADMIN_TAX_BPS;
+        uint256 lpLockTokens = (ownerTax * config.LP_LOCK_BPS()) / config.PROTOCOL_ADMIN_TAX_BPS();
         uint256 vaultTokens = ownerTax - lpLockTokens;
 
         // Convert vault portion and creator tax to WETH
@@ -109,13 +115,13 @@ contract DigicharToken is ERC20, Config {
 
             // Distribute WETH
             if (protocolAdminWethAllocation > 0) {
-                WETH.safeTransfer(protocolAdmin, protocolAdminWethAllocation);
-                emit TaxCollected(from, protocolAdmin, vaultTokens, protocolAdminWethAllocation);
+                config.WETH().safeTransfer(config.protocolAdmin(), protocolAdminWethAllocation);
+                emit TaxCollected(from, config.protocolAdmin(), vaultTokens, protocolAdminWethAllocation);
             }
 
             if (characterOwnerWethAllocation > 0) {
                 address ownershipCertificateOwner = getOwnershipCertificateOwner();
-                WETH.safeTransfer(ownershipCertificateOwner, characterOwnerWethAllocation);
+                config.WETH().safeTransfer(ownershipCertificateOwner, characterOwnerWethAllocation);
                 emit TaxCollected(from, ownershipCertificateOwner, creatorTax, characterOwnerWethAllocation);
             }
         }
@@ -130,14 +136,14 @@ contract DigicharToken is ERC20, Config {
         if (tokenAmount == 0) return 0;
 
         // Approve router to spend tokens
-        approve(address(swapRouter), tokenAmount);
+        approve(address(config.swapRouter()), tokenAmount);
 
         // Set up swap path
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = address(WETH);
+        path[1] = address(config.WETH());
 
-        try swapRouter.swapExactTokensForTokens(
+        try IUniswapV2Router02(config.swapRouter()).swapExactTokensForTokens(
             tokenAmount,
             0, // Accept any amount of WETH
             path,
@@ -170,12 +176,12 @@ contract DigicharToken is ERC20, Config {
 
     function _addLiquidityAndBurn(uint256 tokenAmount, uint256 wethAmount) internal {
         // Approve router to spend tokens
-        approve(address(swapRouter), tokenAmount);
-        WETH.approve(address(swapRouter), wethAmount);
+        approve(address(config.swapRouter()), tokenAmount);
+        config.WETH().approve(address(config.swapRouter()), wethAmount);
 
-        try swapRouter.addLiquidity(
+        try IUniswapV2Router02(config.swapRouter()).addLiquidity(
             address(this),
-            address(WETH),
+            address(config.WETH()),
             tokenAmount,
             wethAmount,
             0, // Accept any amount of tokens
@@ -195,7 +201,7 @@ contract DigicharToken is ERC20, Config {
         if (taxExempt[from] || taxExempt[to]) {
             return false;
         }
-        address ownershipCertificateOwner = ownershipCertificate.ownerOf(ownershipCertificateTokenId);
+        address ownershipCertificateOwner = config.ownershipCertificate().ownerOf(ownershipCertificateTokenId);
         if (from == ownershipCertificateOwner || to == ownershipCertificateOwner) {
             return false;
         }

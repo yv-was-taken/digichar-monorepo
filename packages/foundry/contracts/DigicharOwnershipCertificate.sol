@@ -7,6 +7,8 @@ import { DigicharFactory } from "./DigicharFactory.sol";
 contract DigicharOwnershipCertificate is ERC721 {
     //@dev why does _digicharFactory need to be payable? it shouldn't be...
     // outside the scope of current ticket though..  @TODO :)
+
+    //@TODO move _digicharFactory to config, replace constructor arg with `address _config`
     constructor(address payable _digicharFactory) ERC721("Digichar Ownership Certificate", "DCO") {
         digicharFactory = DigicharFactory(_digicharFactory);
     }

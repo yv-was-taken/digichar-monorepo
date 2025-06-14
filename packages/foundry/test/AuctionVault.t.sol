@@ -6,18 +6,20 @@ import "../contracts/AuctionVault.sol";
 import "../contracts/DigicharFactory.sol";
 import "../contracts/DigicharToken.sol";
 import "../contracts/DigicharOwnershipCertificate.sol";
+import "../contracts/Config.sol";
 //import "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 
 contract AuctionVaultTest is Test {
     AuctionVault public auctionVault;
     DigicharFactory public digicharFactory;
-    DigicharOwnershipCertificate digicharOwnershipCertificate;
+    DigicharOwnershipCertificate digicharprotocolAdminshipCertificate;
+    Config config;
 
-    address public owner = address(0x1);
+    address public protocolAdmin = address(0x1);
     address public user1 = address(0x2);
     address public user2 = address(0x3);
     address public user3 = address(0x4);
-    address public nonOwner = address(0x5);
+    address public nonprotocolAdmin = address(0x5);
 
     uint256 public constant DEFAULT_AUCTION_DURATION = 4 hours;
 
@@ -29,11 +31,12 @@ contract AuctionVaultTest is Test {
     event TokensClaimed(address _user, uint256 _auctionId);
 
     function setUp() public {
-        vm.startPrank(owner);
+        vm.startPrank(protocolAdmin);
 
-        auctionVault = new AuctionVault();
-        digicharFactory = new DigicharFactory(address(auctionVault));
-        digicharOwnershipCertificate = new DigicharOwnershipCertificate(payable(address(digicharFactory)));
+        config = new Config();
+        auctionVault = new AuctionVault(address(config));
+        digicharFactory = new DigicharFactory(address(config));
+        digicharprotocolAdminshipCertificate = new DigicharOwnershipCertificate(payable(address(digicharFactory)));
 
         auctionVault.setDigicharFactory(payable(address(digicharFactory)));
 
@@ -48,31 +51,16 @@ contract AuctionVaultTest is Test {
     function testSetDigicharFactory() public {
         address newFactory = address(0x999);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         vm.expectEmit(false, false, false, true);
         emit DigicharFactorySet(newFactory);
         auctionVault.setDigicharFactory(payable(newFactory));
     }
 
-    function test_Revert_SetDigicharFactory_OnlyOwner() public {
-        vm.prank(nonOwner);
-        vm.expectRevert(AuctionVault.OnlyOwner.selector);
+    function test_Revert_SetDigicharFactory_OnlyProtocolAdmin() public {
+        vm.prank(nonprotocolAdmin);
+        vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
         auctionVault.setDigicharFactory(payable(address(0x999)));
-    }
-
-    function testSetDigicharToken() public {
-        address newToken = address(0x888);
-
-        vm.prank(owner);
-        vm.expectEmit(false, false, false, true);
-        emit DigicharTokenSet(newToken);
-        auctionVault.setDigicharToken(payable(newToken));
-    }
-
-    function test_Revert_SetDigicharToken_OnlyOwner() public {
-        vm.prank(nonOwner);
-        vm.expectRevert(AuctionVault.OnlyOwner.selector);
-        auctionVault.setDigicharToken(payable(address(0x888)));
     }
 
     function testCreateAuction() public {
@@ -83,7 +71,7 @@ contract AuctionVaultTest is Test {
         uint256 auctionIdBefore = auctionVault.auctionId();
         uint256 expectedEndTime = block.timestamp + DEFAULT_AUCTION_DURATION;
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         assertEq(auctionVault.auctionId(), auctionIdBefore + 1);
@@ -93,13 +81,13 @@ contract AuctionVaultTest is Test {
         assertEq(endTime, expectedEndTime);
     }
 
-    function test_Revert_CreateAuction_OnlyOwner() public {
+    function test_Revert_CreateAuction_OnlyprotocolAdmin() public {
         string[3] memory uris = ["uri1", "uri2", "uri3"];
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(nonOwner);
-        vm.expectRevert(AuctionVault.OnlyOwner.selector);
+        vm.prank(nonprotocolAdmin);
+        vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
         auctionVault.createAuction(uris, names, symbols);
     }
 
@@ -109,7 +97,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 bidAmount = 1 ether;
@@ -130,7 +118,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.prank(user1);
@@ -143,7 +131,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         // Fast forward past auction end
@@ -160,7 +148,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["", "name2", "name3"];
         string[3] memory symbols = ["", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.prank(user1);
@@ -173,7 +161,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint8 characterIndex = 1;
@@ -198,7 +186,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.prank(user1);
@@ -224,7 +212,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -251,7 +239,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -266,7 +254,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -285,7 +273,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 currentAuctionId = auctionVault.auctionId();
@@ -298,7 +286,7 @@ contract AuctionVaultTest is Test {
         // Fast forward past auction end
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, winningCharacterIndex);
 
         // Verify auction was closed
@@ -310,7 +298,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 currentAuctionId = auctionVault.auctionId();
@@ -329,7 +317,7 @@ contract AuctionVaultTest is Test {
         // Fast forward past auction end
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, winningCharacterIndex);
 
         // Verify auction was closed
@@ -339,9 +327,9 @@ contract AuctionVaultTest is Test {
         address tokenAddress = auctionVault.getCharacterTokenAddress(currentAuctionId);
         assertTrue(tokenAddress != address(0));
 
-        address ownershipCertificateOwner = DigicharToken(tokenAddress).getOwnershipCertificateOwner();
+        address protocolAdminshipCertificateprotocolAdmin = DigicharToken(tokenAddress).getOwnershipCertificateOwner();
         //expected to be top bidder (user2 in this case)
-        assertEq(ownershipCertificateOwner, user2);
+        assertEq(protocolAdminshipCertificateprotocolAdmin, user2);
 
         string memory mintedCharacterName = DigicharToken(tokenAddress).name();
         assertEq(mintedCharacterName, names[winningCharacterIndex]);
@@ -349,24 +337,24 @@ contract AuctionVaultTest is Test {
         string memory mintedCharacterSymbol = DigicharToken(tokenAddress).symbol();
         assertEq(mintedCharacterSymbol, symbols[winningCharacterIndex]);
 
-        uint256 lastTokenId = digicharOwnershipCertificate.tokenId() - 1;
+        uint256 lastTokenId = digicharprotocolAdminshipCertificate.tokenId() - 1;
 
-        string memory tokenURI = digicharOwnershipCertificate.tokenURI(lastTokenId);
+        string memory tokenURI = digicharprotocolAdminshipCertificate.tokenURI(lastTokenId);
         assertEq(tokenURI, uris[winningCharacterIndex]);
     }
 
-    function test_Revert_CloseCurrentAuction_OnlyOwner() public {
+    function test_Revert_CloseCurrentAuction_OnlyprotocolAdmin() public {
         string[3] memory uris = ["uri1", "uri2", "uri3"];
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
 
-        vm.prank(nonOwner);
-        vm.expectRevert(AuctionVault.OnlyOwner.selector);
+        vm.prank(nonprotocolAdmin);
+        vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
         auctionVault.closeCurrentAuction(user1, 0);
     }
 
@@ -375,11 +363,11 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         // Don't fast forward - auction is still open
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         vm.expectRevert(AuctionVault.AuctionStillOpen.selector);
         auctionVault.closeCurrentAuction(user1, 0);
     }
@@ -390,7 +378,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -404,7 +392,7 @@ contract AuctionVaultTest is Test {
 
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, winningCharacterIndex);
 
         // Now claim tokens
@@ -428,7 +416,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 currentAuctionId = auctionVault.auctionId();
@@ -444,7 +432,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -454,7 +442,7 @@ contract AuctionVaultTest is Test {
 
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, 0);
 
         // user1 never bid, so should have 0 tokens to claim
@@ -469,7 +457,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -484,7 +472,7 @@ contract AuctionVaultTest is Test {
 
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + DEFAULT_AUCTION_DURATION);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, winningCharacterIndex);
 
         uint256 initialTokenSupply = 500_000 * 10 ** 18;
@@ -505,7 +493,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -516,7 +504,7 @@ contract AuctionVaultTest is Test {
 
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, winningCharacterIndex);
 
         // Should not be able to withdraw from winning character
@@ -531,7 +519,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         // This just tests that the function works normally
@@ -553,7 +541,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names1 = ["name1", "name2", "name3"];
         string[3] memory symbols1 = ["SYM1", "SYM2", "SYM3"];
         
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris1, names1, symbols1);
         
         uint256 auction1Id = auctionVault.auctionId();
@@ -563,7 +551,7 @@ contract AuctionVaultTest is Test {
         
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
         
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
         
         // Create second auction
@@ -571,7 +559,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names2 = ["name4", "name5", "name6"];
         string[3] memory symbols2 = ["SYM4", "SYM5", "SYM6"];
         
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris2, names2, symbols2);
         
         uint256 auction2Id = auctionVault.auctionId();
@@ -581,7 +569,7 @@ contract AuctionVaultTest is Test {
         
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
         
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, 1);
         
         // Verify both auctions exist and have different token addresses
@@ -608,7 +596,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         vm.deal(user1, bidAmount + 1 ether);
@@ -628,7 +616,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 auctionId = auctionVault.auctionId();
@@ -652,7 +640,7 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         uint256 currentAuctionId = auctionVault.auctionId();
@@ -666,14 +654,14 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
         // No bids placed
         vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
 
         // Should still be able to close auction even with no bids
-        vm.prank(owner);
+        vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
         // Verify token was created even with 0 pool balance
@@ -682,28 +670,25 @@ contract AuctionVaultTest is Test {
     }
 
     function testAccessControlComprehensive() public {
-        address[] memory nonOwners = new address[](3);
-        nonOwners[0] = user1;
-        nonOwners[1] = user2;
-        nonOwners[2] = user3;
+        address[] memory nonprotocolAdmins = new address[](3);
+        nonprotocolAdmins[0] = user1;
+        nonprotocolAdmins[1] = user2;
+        nonprotocolAdmins[2] = user3;
 
         string[3] memory uris = ["uri1", "uri2", "uri3"];
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        for (uint256 i = 0; i < nonOwners.length; i++) {
-            vm.startPrank(nonOwners[i]);
+        for (uint256 i = 0; i < nonprotocolAdmins.length; i++) {
+            vm.startPrank(nonprotocolAdmins[i]);
 
-            vm.expectRevert(AuctionVault.OnlyOwner.selector);
+            vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
             auctionVault.setDigicharFactory(payable(address(0x123)));
 
-            vm.expectRevert(AuctionVault.OnlyOwner.selector);
-            auctionVault.setDigicharToken(payable(address(0x123)));
-
-            vm.expectRevert(AuctionVault.OnlyOwner.selector);
+            vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
             auctionVault.createAuction(uris, names, symbols);
 
-            vm.expectRevert(AuctionVault.OnlyOwner.selector);
+            vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
             auctionVault.closeCurrentAuction(user1, 0);
 
             vm.stopPrank();

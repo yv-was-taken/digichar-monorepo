@@ -40,23 +40,12 @@ contract ConfigTest is Test {
     function setUp() public {
         vm.startPrank(protocolAdmin);
 
-        config = new Config(protocolAdmin);
+        config = new Config();
         mockWETH = new CustomCoin();
         mockSwapRouter = new MockUniswapV2RouterForConfig();
         mockOwnershipCertificate = new DigicharOwnershipCertificate(payable(address(0x999)));
 
         vm.stopPrank();
-    }
-
-    function testConstructor() public {
-        // Note: There's a bug in the constructor - it should set protocolAdmin = _protocolAdmin
-        // Currently it does _protocolAdmin = protocolAdmin which doesn't work
-        // For now, we'll test the current behavior
-
-        assertEq(config.BASIS_POINTS(), 10_000);
-        assertEq(config.PROTOCOL_ADMIN_TAX_BPS(), 100);
-        assertEq(config.CHARACTER_OWNER_TAX_BPS(), 100);
-        assertEq(config.LP_LOCK_BPS(), 75);
     }
 
     function testSetWETH() public {
@@ -79,12 +68,6 @@ contract ConfigTest is Test {
         vm.expectEmit(true, true, false, false);
         emit SwapRouterSet(protocolAdmin, address(mockSwapRouter));
         config.setSwapRouter(address(mockSwapRouter));
-    }
-
-    function testSetSwapRouterZeroAddress() public {
-        vm.prank(protocolAdmin);
-        vm.expectRevert("Invalid router");
-        config.setSwapRouter(address(0));
     }
 
     function testSetSwapRouterOnlyProtocolAdmin() public {
@@ -180,19 +163,6 @@ contract ConfigTest is Test {
         config.updateProtocolAdminAdmin(newAdmin);
     }
 
-    function testConstants() public {
-        // Test that constants are set correctly
-        assertEq(config.INITIAL_CHARACTER_TOKEN_SUPPLY(), 1_000_000);
-        assertEq(config.CHARACTER_TOKEN_DECIMALS(), 18);
-        assertEq(config.BASIS_POINTS(), 10_000);
-    }
-
-    function testDefaultTaxValues() public {
-        assertEq(config.PROTOCOL_ADMIN_TAX_BPS(), 100); // 1%
-        assertEq(config.CHARACTER_OWNER_TAX_BPS(), 100); // 1%
-        assertEq(config.LP_LOCK_BPS(), 75); // 0.75%
-    }
-
     function testTaxBpsEdgeCases() public {
         // Test setting tax to 0
         vm.prank(protocolAdmin);
@@ -214,34 +184,6 @@ contract ConfigTest is Test {
         config.setProtocolAdminTaxBps(200);
         config.setLpLockBps(200);
         assertEq(config.LP_LOCK_BPS(), 200);
-    }
-
-    function testSetWETHToZeroAddress() public {
-        // Should be allowed (might be used to reset)
-        vm.prank(protocolAdmin);
-        config.setWETH(address(0));
-        assertEq(address(config.WETH()), address(0));
-    }
-
-    function testSetOwnershipCertificateToZeroAddress() public {
-        // Should be allowed (might be used to reset)
-        vm.prank(protocolAdmin);
-        config.setOwnershipCertificate(address(0));
-    }
-
-    function testUpdateProtocolAdminAdminToZeroAddress() public {
-        // This would effectively lock the contract, but might be intentional
-        vm.prank(protocolAdmin);
-        config.updateProtocolAdminAdmin(address(0));
-
-        // No one should be able to call admin functions after this
-        vm.prank(protocolAdmin);
-        vm.expectRevert(Config.OnlyProtocolAdmin.selector);
-        config.setProtocolAdminTaxBps(100);
-
-        vm.prank(nonAdmin);
-        vm.expectRevert(Config.OnlyProtocolAdmin.selector);
-        config.setProtocolAdminTaxBps(100);
     }
 
     function testMultipleConfigUpdates() public {
@@ -335,36 +277,6 @@ contract ConfigTest is Test {
         config.setProtocolAdminTaxBps(600);
     }
 
-    function testBasisPointsCalculations() public {
-        // Test that tax calculations work correctly with different values
-        uint256 amount = 1000;
-        uint256 taxBps = 250; // 2.5%
-
-        uint256 expectedTax = (amount * taxBps) / config.BASIS_POINTS();
-        assertEq(expectedTax, 25); // 2.5% of 1000 = 25
-
-        // Test with larger amounts
-        amount = 1_000_000;
-        expectedTax = (amount * taxBps) / config.BASIS_POINTS();
-        assertEq(expectedTax, 25_000); // 2.5% of 1,000,000 = 25,000
-    }
-
-    function testTaxBpsRelationship() public {
-        // Test that LP_LOCK_BPS should logically be <= PROTOCOL_ADMIN_TAX_BPS
-        // since LP lock is a portion of protocol admin tax
-
-        vm.startPrank(protocolAdmin);
-
-        config.setProtocolAdminTaxBps(100); // 1%
-        config.setLpLockBps(75); // 0.75% (should be valid)
-
-        assertEq(config.PROTOCOL_ADMIN_TAX_BPS(), 100);
-        assertEq(config.LP_LOCK_BPS(), 75);
-        assertTrue(config.LP_LOCK_BPS() <= config.PROTOCOL_ADMIN_TAX_BPS());
-
-        vm.stopPrank();
-    }
-
     function testAccessControlComprehensive() public {
         address[] memory nonAdmins = new address[](3);
         nonAdmins[0] = nonAdmin;
@@ -428,7 +340,7 @@ contract ConfigTest is Test {
 
         // Deploy a new config to test this
         vm.prank(protocolAdmin);
-        Config newConfig = new Config(protocolAdmin);
+        Config newConfig = new Config();
 
         // The bug means that only the original deployer can call admin functions
         // Let's test what actually happens

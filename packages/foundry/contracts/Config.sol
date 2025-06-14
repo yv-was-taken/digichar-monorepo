@@ -3,12 +3,13 @@ pragma solidity ^0.8.19;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
+import { AuctionVault } from "./AuctionVault.sol";
 import { IUniswapV2Router02 } from "v2-periphery/interfaces/IUniswapV2Router02.sol";
+import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
 
 contract Config {
-    //@TODO get rid of constructor arg and set protocol admin as msg.sender
-    constructor(address _protocolAdmin) {
-        _protocolAdmin = protocolAdmin;
+    constructor() {
+        protocolAdmin = msg.sender;
     }
 
     error OnlyProtocolAdmin();
@@ -18,12 +19,15 @@ contract Config {
         _;
     }
 
-    address protocolAdmin;
+    address public protocolAdmin;
+
+    //protocol contracts
+    DigicharOwnershipCertificate public ownershipCertificate;
+    AuctionVault public auctionVault;
 
     //immutable constants
     uint256 public constant INITIAL_CHARACTER_TOKEN_SUPPLY = 1_000_000;
-    uint256 public constant CHARACTER_TOKEN_DECIMALS = 18;
-    DigicharOwnershipCertificate public ownershipCertificate;
+    uint8 public constant CHARACTER_TOKEN_DECIMALS = 18;
     uint256 public constant BASIS_POINTS = 10_000;
 
     // Tax configuration
@@ -40,7 +44,8 @@ contract Config {
     }
 
     //dex addresses
-    IUniswapV2Router02 swapRouter;
+    IUniswapV2Router02 public swapRouter;
+    IUniswapV2Factory public swapFactory;
     ERC20 public WETH;
 
     event WethSet(address _weth);
@@ -53,9 +58,15 @@ contract Config {
     event SwapRouterSet(address indexed _protocolAdmin, address indexed_swapRouter);
 
     function setSwapRouter(address _swapRouter) external onlyProtocolAdmin {
-        require(_swapRouter != address(0), "Invalid router");
         swapRouter = IUniswapV2Router02(_swapRouter);
         emit SwapRouterSet(protocolAdmin, _swapRouter);
+    }
+
+    event SwapFactorySet(address indexed _protocolAdmin, address indexed_swapRouter);
+
+    function setSwapFactory(address _swapFactory) external onlyProtocolAdmin {
+        swapFactory = IUniswapV2Factory(_swapFactory);
+        emit SwapFactorySet(protocolAdmin, _swapFactory);
     }
 
     event ProtocolAdminTaxBpsSet(address indexed _protocolAdmin, uint256 _PROTOCOL_ADMIN_TAX_BPS);
@@ -84,6 +95,13 @@ contract Config {
     function setOwnershipCertificate(address _ownershipCertificate) external onlyProtocolAdmin {
         ownershipCertificate = DigicharOwnershipCertificate(_ownershipCertificate);
         emit OwnershipCertificateSet(protocolAdmin, _ownershipCertificate);
+    }
+
+    event AuctionVaultSet(address indexed _protocolAdmin, address _auctionVault);
+
+    function setAuctionVault(address _auctionVault) external onlyProtocolAdmin {
+        auctionVault = AuctionVault(_auctionVault);
+        emit AuctionVaultSet(protocolAdmin, _auctionVault);
     }
 
     event ProtocolAdminAdminUpdated(address _protocolAdmin);

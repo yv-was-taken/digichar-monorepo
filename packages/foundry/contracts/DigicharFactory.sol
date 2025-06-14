@@ -8,14 +8,14 @@ import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
 import { DigicharToken } from "./DigicharToken.sol";
 import { Config } from "./Config.sol";
 import { AuctionVault } from "./AuctionVault.sol";
-import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
 
-contract DigicharFactory is Config {
+contract DigicharFactory {
     using SafeTransferLib for ERC20;
 
-    constructor(address _auctionVault) Config(protocolAdmin) {
-        auctionVault = AuctionVault(_auctionVault);
-        owner = msg.sender;
+    Config config;
+
+    constructor(address _config) {
+        config = Config(_config);
     }
 
     receive() external payable {
@@ -24,12 +24,10 @@ contract DigicharFactory is Config {
 
     //errors
     error OnlyAuctionVault();
-    error OnlyOwner();
+    error OnlyProtocolAdmin();
     error InsufficientBalance();
 
     //events
-    event TargetDexUpdated(address _newTargetDex);
-    event DigicharOwnershipCertificateSet(address _digicharOwnershipCertificate);
     event TokenCreated(address indexed _token, string _name, string _symbol);
     event PairCreated(address indexed _token, address indexed _pair);
     event SwapFactorySet(address indexed _swapFactory);
@@ -39,36 +37,16 @@ contract DigicharFactory is Config {
     event Received(address, uint256);
 
     //state variables
-    address public owner;
-    AuctionVault public auctionVault;
-    address targetDex; //@dev, need to surf around hyperevm and find which dex is best...
-    IUniswapV2Factory swapFactory;
-    DigicharOwnershipCertificate digicharOwnershipCertificate;
 
     //modifiers
     modifier onlyAuctionVault() {
-        if (msg.sender != address(auctionVault)) revert OnlyAuctionVault();
+        if (msg.sender != address(config.auctionVault())) revert OnlyAuctionVault();
         _;
     }
 
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert OnlyOwner();
+    modifier onlyProtocolAdmin() {
+        if (msg.sender != config.protocolAdmin()) revert OnlyProtocolAdmin();
         _;
-    }
-
-    function setSwapFactory(address _swapFactory) external onlyOwner {
-        swapFactory = IUniswapV2Factory(_swapFactory);
-        emit SwapFactorySet(_swapFactory);
-    }
-
-    function updateTargetDex(address _newTargetDex) public onlyOwner {
-        targetDex = _newTargetDex;
-        emit TargetDexUpdated(_newTargetDex);
-    }
-
-    function setDigicharOwnershipCertificate(address _digicharOwnershipCertificate) external onlyOwner {
-        digicharOwnershipCertificate = DigicharOwnershipCertificate(_digicharOwnershipCertificate);
-        emit DigicharOwnershipCertificateSet(_digicharOwnershipCertificate);
     }
 
     //contract core
@@ -81,12 +59,12 @@ contract DigicharFactory is Config {
         string memory _characterSymbol
     ) external payable onlyAuctionVault returns (address) {
         //@dev mint character nft and send them ownership certificate
-        uint256 _ownershipCertificateTokenId = digicharOwnershipCertificate.mint(_winningBidder, _characterTokenURI);
+        uint256 _ownershipCertificateTokenId = config.ownershipCertificate().mint(_winningBidder, _characterTokenURI);
 
         //@dev create character token using LP from winning bid pool to DigicharFactory
-        uint256 _auctionId = auctionVault.auctionId();
+        uint256 _auctionId = config.auctionVault().auctionId();
 
-        uint256 winningPoolBalance = auctionVault.getPoolBalance(_auctionId, _winningCharacterIndex);
+        uint256 winningPoolBalance = config.auctionVault().getPoolBalance(_auctionId, _winningCharacterIndex);
         if (msg.value != winningPoolBalance) revert InsufficientBalance();
 
         address _tokenAddress = createToken(_ownershipCertificateTokenId, _characterName, _characterSymbol);
@@ -96,14 +74,15 @@ contract DigicharFactory is Config {
             _pairAddress,
             //@dev locking half of total supply in LP
             // this amount needs to be played with to find a good starting value
-            (INITIAL_CHARACTER_TOKEN_SUPPLY / 2) * 10 ** CHARACTER_TOKEN_DECIMALS,
+            (config.INITIAL_CHARACTER_TOKEN_SUPPLY() / 2) * 10 ** config.CHARACTER_TOKEN_DECIMALS(),
             //@dev setting tokenAmountMin and ethAmountMin to zero as not needed metric for initial LP creation
             0,
             0
         );
         //@dev now that LP is created (and burned), send rest of tokens back to auction vault for token claim.
         ERC20(_tokenAddress).safeTransfer(
-            address(auctionVault), (INITIAL_CHARACTER_TOKEN_SUPPLY / 2) * 10 ** CHARACTER_TOKEN_DECIMALS
+            address(config.auctionVault()),
+            (config.INITIAL_CHARACTER_TOKEN_SUPPLY() / 2) * 10 ** config.CHARACTER_TOKEN_DECIMALS()
         );
 
         return _tokenAddress;
@@ -113,13 +92,17 @@ contract DigicharFactory is Config {
         private
         returns (address)
     {
-        address tokenAddress = address(new DigicharToken(_ownershipCertificateTokenId, _name, _symbol));
+        address tokenAddress = address(
+            new DigicharToken(
+                address(config), _ownershipCertificateTokenId, _name, _symbol, config.CHARACTER_TOKEN_DECIMALS()
+            )
+        );
         return tokenAddress;
     }
 
     function createTokenPair(address _tokenAddress) private returns (address pair) {
         // Create swap pair
-        pair = swapFactory.createPair(_tokenAddress, address(WETH));
+        pair = config.swapFactory().createPair(_tokenAddress, address(config.WETH()));
         emit PairCreated(_tokenAddress, pair);
 
         return (pair);
@@ -136,10 +119,12 @@ contract DigicharFactory is Config {
         require(tokenAmount > 0, "Token amount must be > 0");
 
         // Approve router
-        DigicharToken(token).approve(address(swapRouter), tokenAmount);
+        DigicharToken(token).approve(address(config.swapRouter()), tokenAmount);
 
         // Add liquidity
-        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = swapRouter.addLiquidityETH{ value: msg.value }(
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = config.swapRouter().addLiquidityETH{
+            value: msg.value
+        }(
             token,
             tokenAmount,
             tokenAmountMin,
@@ -154,7 +139,7 @@ contract DigicharFactory is Config {
         //}
         if (msg.value > amountETH) {
             //@dev sending leftover ETH from LP creation back to AuctionVault
-            (bool success,) = payable(address(protocolAdmin)).call{ value: msg.value - amountETH }("");
+            (bool success,) = payable(address(config.protocolAdmin())).call{ value: msg.value - amountETH }("");
             require(success, "ETH transfer failed");
         }
         emit LPInitialized(token, pair, amountToken, amountETH, liquidity);
