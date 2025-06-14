@@ -115,8 +115,9 @@ contract DigicharFactory {
         uint256 tokenAmountMin, //@dev should be fetched from contract config
         uint256 ethAmountMin //@dev should be fetched from contract config
     ) private {
-        require(msg.value > 0, "Must send ETH");
-        require(tokenAmount > 0, "Token amount must be > 0");
+        //@dev not sure if `InsufficientBalance` is the best error message to send here
+        // feel like we could improve on that.
+        if (msg.value == 0 || tokenAmount == 0) revert InsufficientBalance();
 
         // Approve router
         DigicharToken(token).approve(address(config.swapRouter()), tokenAmount);

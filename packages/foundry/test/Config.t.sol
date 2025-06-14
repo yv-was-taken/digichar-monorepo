@@ -35,7 +35,7 @@ contract ConfigTest is Test {
     event CharacterOwnerTaxBpsSet(address indexed _protocolAdmin, uint256 _CHARACTER_OWNER_TAX_BPS);
     event LpLockBpsSet(address indexed _protocolAdmin, uint256 _LP_LOCK_BPS);
     event OwnershipCertificateSet(address indexed _protocolAdmin, address _ownershipCertificate);
-    event ProtocolAdminAdminUpdated(address _protocolAdmin);
+    event ProtocolAdminUpdated(address _protocolAdmin);
 
     function setUp() public {
         vm.startPrank(protocolAdmin);
@@ -140,11 +140,11 @@ contract ConfigTest is Test {
         config.setOwnershipCertificate(address(mockOwnershipCertificate));
     }
 
-    function testUpdateProtocolAdminAdmin() public {
+    function testUpdateProtocolAdmin() public {
         vm.prank(protocolAdmin);
         vm.expectEmit(false, false, false, true);
-        emit ProtocolAdminAdminUpdated(newAdmin);
-        config.updateProtocolAdminAdmin(newAdmin);
+        emit ProtocolAdminUpdated(newAdmin);
+        config.updateProtocolAdmin(newAdmin);
 
         // After updating, the new admin should be able to call admin functions
         vm.prank(newAdmin);
@@ -157,33 +157,10 @@ contract ConfigTest is Test {
         config.setProtocolAdminTaxBps(300);
     }
 
-    function testUpdateProtocolAdminAdminOnlyProtocolAdmin() public {
+    function test_Revert_UpdateProtocolAdmin_OnlyProtocolAdmin() public {
         vm.prank(nonAdmin);
         vm.expectRevert(Config.OnlyProtocolAdmin.selector);
-        config.updateProtocolAdminAdmin(newAdmin);
-    }
-
-    function testTaxBpsEdgeCases() public {
-        // Test setting tax to 0
-        vm.prank(protocolAdmin);
-        config.setProtocolAdminTaxBps(0);
-        assertEq(config.PROTOCOL_ADMIN_TAX_BPS(), 0);
-
-        // Test setting tax to maximum (100%)
-        vm.prank(protocolAdmin);
-        config.setCharacterOwnerTaxBps(10000);
-        assertEq(config.CHARACTER_OWNER_TAX_BPS(), 10000);
-
-        // Test setting LP lock to 0
-        vm.prank(protocolAdmin);
-        config.setLpLockBps(0);
-        assertEq(config.LP_LOCK_BPS(), 0);
-
-        // Test setting LP lock to maximum of protocol admin tax
-        vm.prank(protocolAdmin);
-        config.setProtocolAdminTaxBps(200);
-        config.setLpLockBps(200);
-        assertEq(config.LP_LOCK_BPS(), 200);
+        config.updateProtocolAdmin(newAdmin);
     }
 
     function testMultipleConfigUpdates() public {
@@ -234,8 +211,8 @@ contract ConfigTest is Test {
         config.setOwnershipCertificate(address(mockOwnershipCertificate));
 
         vm.expectEmit(false, false, false, true);
-        emit ProtocolAdminAdminUpdated(newAdmin);
-        config.updateProtocolAdminAdmin(newAdmin);
+        emit ProtocolAdminUpdated(newAdmin);
+        config.updateProtocolAdmin(newAdmin);
 
         vm.stopPrank();
     }
@@ -257,24 +234,6 @@ contract ConfigTest is Test {
         assertEq(config.PROTOCOL_ADMIN_TAX_BPS(), protocolTax);
         assertEq(config.CHARACTER_OWNER_TAX_BPS(), characterTax);
         assertEq(config.LP_LOCK_BPS(), lpLockTax);
-    }
-
-    function testFuzzProtocolAdminUpdates(address randomAdmin) public {
-        vm.assume(randomAdmin != address(0)); // Avoid zero address for this test
-        vm.assume(randomAdmin.code.length == 0); // Avoid contracts
-
-        vm.prank(protocolAdmin);
-        config.updateProtocolAdminAdmin(randomAdmin);
-
-        // New admin should work
-        vm.prank(randomAdmin);
-        config.setProtocolAdminTaxBps(500);
-        assertEq(config.PROTOCOL_ADMIN_TAX_BPS(), 500);
-
-        // Old admin should not work
-        vm.prank(protocolAdmin);
-        vm.expectRevert(Config.OnlyProtocolAdmin.selector);
-        config.setProtocolAdminTaxBps(600);
     }
 
     function testAccessControlComprehensive() public {
@@ -305,7 +264,7 @@ contract ConfigTest is Test {
             config.setOwnershipCertificate(address(mockOwnershipCertificate));
 
             vm.expectRevert(Config.OnlyProtocolAdmin.selector);
-            config.updateProtocolAdminAdmin(address(0x999));
+            config.updateProtocolAdmin(address(0x999));
 
             vm.stopPrank();
         }

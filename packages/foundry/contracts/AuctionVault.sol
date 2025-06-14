@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { DigicharFactory } from "./DigicharFactory.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { Config } from "./Config.sol";
@@ -27,7 +26,6 @@ contract AuctionVault {
 
     //events
     event AuctionTimeChanged(uint256 _auctionDurationTime);
-    event DigicharFactorySet(address _digicharFactory);
     event DigicharTokenSet(address _digicharToken);
     event BidPlaced(uint256 indexed _auctionId, address indexed _user, uint256 _amount, uint256 _characterId);
     event BidWithdrawn(uint256 _auctionId, address user, uint256 _withdrawAmount);
@@ -38,7 +36,6 @@ contract AuctionVault {
 
     //update state variable functions
     //@TODO should be defined in (and grabbed from) config
-    DigicharFactory digicharFactory;
     //@dev extract token metric constants to contract config
     uint256 initialTokenSupplyForEachCharacter = 500_000 * 1 * 10 ** 18;
 
@@ -82,13 +79,6 @@ contract AuctionVault {
 
     function getCurrentAuctionEndTime() public view returns (uint256) {
         return auctions[auctionId].endTime;
-    }
-
-    //update state variable functions
-    //@TODO should be defined in (and grabbed from) config
-    function setDigicharFactory(address payable _digicharFactory) public onlyProtcolAdmin {
-        digicharFactory = DigicharFactory(_digicharFactory);
-        emit DigicharFactorySet(_digicharFactory);
     }
 
     //contract core
@@ -157,11 +147,17 @@ contract AuctionVault {
         string memory winningCharacterURI = auctions[auctionId].characters[_winningCharacterIndex].characterURI;
         string memory winningCharacterName = auctions[auctionId].characters[_winningCharacterIndex].name;
         string memory winningCharacterSymbol = auctions[auctionId].characters[_winningCharacterIndex].symbol;
-        // Get winning bid pool amount
+
         uint256 winningPoolBalance = auctions[auctionId].characters[_winningCharacterIndex].poolBalance;
 
+        //if no bids in auction, close auction without creating character
+        if (winningPoolBalance == 0) {
+            auctionId++;
+            return;
+        }
+
         // Create character, sending winning pool balance for token creation
-        address _tokenAddress = digicharFactory.createCharacter{ value: winningPoolBalance }(
+        address _tokenAddress = config.digicharFactory().createCharacter{ value: winningPoolBalance }(
             _topBidder, _winningCharacterIndex, winningCharacterURI, winningCharacterName, winningCharacterSymbol
         );
         characterTokensByAuctionId[auctionId] = _tokenAddress;

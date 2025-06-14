@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { DigicharOwnershipCertificate } from "./DigicharOwnershipCertificate.sol";
+import { DigicharFactory } from "./DigicharFactory.sol";
 import { AuctionVault } from "./AuctionVault.sol";
 import { IUniswapV2Router02 } from "v2-periphery/interfaces/IUniswapV2Router02.sol";
 import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
@@ -14,7 +15,7 @@ contract Config {
 
     error OnlyProtocolAdmin();
 
-    modifier onlyProtocolAdmin() virtual {
+    modifier onlyProtocolAdmin() {
         if (msg.sender != protocolAdmin) revert OnlyProtocolAdmin();
         _;
     }
@@ -22,8 +23,9 @@ contract Config {
     address public protocolAdmin;
 
     //protocol contracts
-    DigicharOwnershipCertificate public ownershipCertificate;
     AuctionVault public auctionVault;
+    DigicharFactory public digicharFactory;
+    DigicharOwnershipCertificate public ownershipCertificate;
 
     //immutable constants
     uint256 public constant INITIAL_CHARACTER_TOKEN_SUPPLY = 1_000_000;
@@ -104,10 +106,17 @@ contract Config {
         emit AuctionVaultSet(protocolAdmin, _auctionVault);
     }
 
-    event ProtocolAdminAdminUpdated(address _protocolAdmin);
+    event DigicharFactorySet(address indexed _protocolAdmin, address _digicharFactory);
 
-    function updateProtocolAdminAdmin(address _protocolAdmin) external onlyProtocolAdmin {
+    function setDigicharFactory(address payable _digicharFactory) external onlyProtocolAdmin {
+        digicharFactory = DigicharFactory(_digicharFactory);
+        emit DigicharFactorySet(protocolAdmin, _digicharFactory);
+    }
+
+    event ProtocolAdminUpdated(address _protocolAdmin);
+
+    function updateProtocolAdmin(address _protocolAdmin) external onlyProtocolAdmin {
         protocolAdmin = _protocolAdmin;
-        emit ProtocolAdminAdminUpdated(_protocolAdmin);
+        emit ProtocolAdminUpdated(_protocolAdmin);
     }
 }

@@ -7,13 +7,17 @@ import "../contracts/DigicharFactory.sol";
 import "../contracts/DigicharToken.sol";
 import "../contracts/DigicharOwnershipCertificate.sol";
 import "../contracts/Config.sol";
-//import "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 contract AuctionVaultTest is Test {
     AuctionVault public auctionVault;
     DigicharFactory public digicharFactory;
-    DigicharOwnershipCertificate digicharprotocolAdminshipCertificate;
+    DigicharOwnershipCertificate digicharOwnershipCertificate;
     Config config;
+
+    MockUniswapV2Factory swapFactory;
+    MockUniswapV2Router swapRouter;
+    ERC20 weth;
 
     address public protocolAdmin = address(0x1);
     address public user1 = address(0x2);
@@ -34,11 +38,22 @@ contract AuctionVaultTest is Test {
         vm.startPrank(protocolAdmin);
 
         config = new Config();
+
         auctionVault = new AuctionVault(address(config));
         digicharFactory = new DigicharFactory(address(config));
-        digicharprotocolAdminshipCertificate = new DigicharOwnershipCertificate(payable(address(digicharFactory)));
+        digicharOwnershipCertificate = new DigicharOwnershipCertificate(payable(address(digicharFactory)));
 
-        auctionVault.setDigicharFactory(payable(address(digicharFactory)));
+        weth = new CustomCoin();
+        swapFactory = new MockUniswapV2Factory();
+        swapRouter = new MockUniswapV2Router(address(weth));
+
+        config.setAuctionVault(address(auctionVault));
+        config.setDigicharFactory(payable(address(digicharFactory)));
+        config.setOwnershipCertificate(address(digicharOwnershipCertificate));
+
+        config.setSwapFactory(address(swapFactory));
+        config.setSwapRouter(address(swapRouter));
+        config.setWETH(address(weth));
 
         vm.stopPrank();
 
@@ -46,21 +61,6 @@ contract AuctionVaultTest is Test {
         vm.deal(user1, 10 ether);
         vm.deal(user2, 10 ether);
         vm.deal(user3, 10 ether);
-    }
-
-    function testSetDigicharFactory() public {
-        address newFactory = address(0x999);
-
-        vm.prank(protocolAdmin);
-        vm.expectEmit(false, false, false, true);
-        emit DigicharFactorySet(newFactory);
-        auctionVault.setDigicharFactory(payable(newFactory));
-    }
-
-    function test_Revert_SetDigicharFactory_OnlyProtocolAdmin() public {
-        vm.prank(nonprotocolAdmin);
-        vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
-        auctionVault.setDigicharFactory(payable(address(0x999)));
     }
 
     function testCreateAuction() public {
@@ -327,9 +327,9 @@ contract AuctionVaultTest is Test {
         address tokenAddress = auctionVault.getCharacterTokenAddress(currentAuctionId);
         assertTrue(tokenAddress != address(0));
 
-        address protocolAdminshipCertificateprotocolAdmin = DigicharToken(tokenAddress).getOwnershipCertificateOwner();
+        address ownershipCertificateprotocolAdmin = DigicharToken(tokenAddress).getOwnershipCertificateOwner();
         //expected to be top bidder (user2 in this case)
-        assertEq(protocolAdminshipCertificateprotocolAdmin, user2);
+        assertEq(ownershipCertificateprotocolAdmin, user2);
 
         string memory mintedCharacterName = DigicharToken(tokenAddress).name();
         assertEq(mintedCharacterName, names[winningCharacterIndex]);
@@ -337,9 +337,9 @@ contract AuctionVaultTest is Test {
         string memory mintedCharacterSymbol = DigicharToken(tokenAddress).symbol();
         assertEq(mintedCharacterSymbol, symbols[winningCharacterIndex]);
 
-        uint256 lastTokenId = digicharprotocolAdminshipCertificate.tokenId() - 1;
+        uint256 lastTokenId = digicharOwnershipCertificate.tokenId() - 1;
 
-        string memory tokenURI = digicharprotocolAdminshipCertificate.tokenURI(lastTokenId);
+        string memory tokenURI = digicharOwnershipCertificate.tokenURI(lastTokenId);
         assertEq(tokenURI, uris[winningCharacterIndex]);
     }
 
@@ -664,9 +664,9 @@ contract AuctionVaultTest is Test {
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
 
-        // Verify token was created even with 0 pool balance
+        // Verify no token was created due to no bids from auction
         address tokenAddress = auctionVault.getCharacterTokenAddress(auctionVault.auctionId() - 1);
-        assertTrue(tokenAddress != address(0));
+        assertTrue(tokenAddress == address(0));
     }
 
     function testAccessControlComprehensive() public {
@@ -683,9 +683,6 @@ contract AuctionVaultTest is Test {
             vm.startPrank(nonprotocolAdmins[i]);
 
             vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
-            auctionVault.setDigicharFactory(payable(address(0x123)));
-
-            vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
             auctionVault.createAuction(uris, names, symbols);
 
             vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
@@ -693,5 +690,94 @@ contract AuctionVaultTest is Test {
 
             vm.stopPrank();
         }
+    }
+}
+
+contract CustomCoin is ERC20 {
+    constructor() ERC20("Dummy ", "DUMMY", 18) { }
+
+    function mint(uint256 amount) public {
+        _mint(msg.sender, amount);
+    }
+}
+
+contract MockUniswapV2Factory {
+    mapping(address => mapping(address => address)) public getPair;
+    address[] public allPairs;
+
+    function createPair(address tokenA, address tokenB) external returns (address pair) {
+        require(tokenA != tokenB, "IDENTICAL_ADDRESSES");
+        (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        require(token0 != address(0), "ZERO_ADDRESS");
+        require(getPair[token0][token1] == address(0), "PAIR_EXISTS");
+
+        // Create mock pair address
+        pair = address(new MockPair(token0, token1));
+        getPair[token0][token1] = pair;
+        getPair[token1][token0] = pair;
+        allPairs.push(pair);
+    }
+
+    function allPairsLength() external view returns (uint256) {
+        return allPairs.length;
+    }
+}
+
+contract MockPair {
+    address public token0;
+    address public token1;
+
+    constructor(address _token0, address _token1) {
+        token0 = _token0;
+        token1 = _token1;
+    }
+}
+
+contract MockUniswapV2Router {
+    address public WETH;
+
+    constructor(address _WETH) {
+        WETH = _WETH;
+    }
+
+    function addLiquidityETH(
+        address token,
+        uint256 amountTokenDesired,
+        uint256 amountTokenMin,
+        uint256 amountETHMin,
+        address to,
+        uint256 deadline
+    ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity) {
+        // Mock implementation
+        amountToken = amountTokenDesired;
+        amountETH = msg.value;
+        liquidity = 1000; // Mock liquidity amount
+    }
+
+    function swapExactTokensForTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external returns (uint256[] memory amounts) {
+        amounts = new uint256[](path.length);
+        amounts[0] = amountIn;
+        amounts[1] = amountIn / 2; // Mock 2:1 ratio
+    }
+
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 amountADesired,
+        uint256 amountBDesired,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address to,
+        uint256 deadline
+    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+        amountA = amountADesired;
+        amountB = amountBDesired;
+        liquidity = 1000;
     }
 }
