@@ -13,9 +13,6 @@ contract DigicharToken is ERC20 {
 
     uint256 public immutable ownershipCertificateTokenId;
 
-    // DEX integration
-    //IUniswapV2Router02 public immutable swapRouter;
-
     // Whitelist for tax exemptions (LP contracts, etc.)
     mapping(address => bool) public taxExempt;
 

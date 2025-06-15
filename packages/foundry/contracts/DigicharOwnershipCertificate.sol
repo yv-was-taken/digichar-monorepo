@@ -32,7 +32,7 @@ contract DigicharOwnershipCertificate is ERC721 {
     mapping(uint256 => string) public tokenURIs;
 
     //set state variable functions
-    function _setTokenURI(uint256 _tokenId, string memory _tokenURI) internal virtual {
+    function _setTokenURI(uint256 _tokenId, string memory _tokenURI) private {
         tokenURIs[_tokenId] = _tokenURI;
     }
 
