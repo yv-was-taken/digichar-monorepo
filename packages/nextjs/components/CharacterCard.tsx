@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import { formatEther } from "viem";
+import { useAccount } from "wagmi";
 import { EtherInput } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~~/components/ui/card";
+import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 interface CharacterCardProps {
   character: {
@@ -16,7 +18,9 @@ interface CharacterCardProps {
     isWinner: boolean;
   };
   characterIndex: number;
+  currentAuctionId: bigint | undefined;
   onBid: (characterIndex: number, amount: string) => void;
+  onWithdrawBid: (characterIndex: number, amount: string) => void;
   auctionEnded: boolean;
   className?: string;
 }
@@ -24,11 +28,26 @@ interface CharacterCardProps {
 export const CharacterCard: React.FC<CharacterCardProps> = ({
   character,
   characterIndex,
+  currentAuctionId,
   onBid,
+  onWithdrawBid,
   auctionEnded,
   className,
 }) => {
   const [bidAmount, setBidAmount] = useState<string>("");
+  const [withdrawAmount, setWithdrawAmount] = useState<string>("");
+  const { address: connectedAddress } = useAccount();
+
+  // Read user's bid balance for this character
+  const { data: userBidBalance } = useScaffoldReadContract({
+    contractName: "AuctionVault",
+    functionName: "getUserBidBalance",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
+    args:
+      connectedAddress && currentAuctionId !== undefined
+        ? [connectedAddress, currentAuctionId, characterIndex]
+        : undefined,
+  });
 
   const handleBid = () => {
     if (bidAmount && parseFloat(bidAmount) > 0) {
@@ -37,7 +56,16 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
     }
   };
 
+  const handleWithdrawBid = () => {
+    if (withdrawAmount && parseFloat(withdrawAmount) > 0) {
+      onWithdrawBid(characterIndex, withdrawAmount);
+      setWithdrawAmount("");
+    }
+  };
+
   const poolBalanceEth = formatEther(character.poolBalance);
+  const userBidBalanceEth = userBidBalance ? formatEther(userBidBalance) : "0";
+  const hasUserBid = userBidBalance && userBidBalance > 0n;
 
   // Convert IPFS hash to full URL if needed
   const getImageUrl = (uri: string) => {
@@ -84,20 +112,36 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
           )}
         </div>
 
-        <div className="text-center">
-          <div className="text-sm text-gray-400 mb-1">Current Pool</div>
-          <div className="text-xl font-bold text-green-500">{Number(poolBalanceEth).toFixed(4)} ETH</div>
+        <div className="text-center space-y-2">
+          <div>
+            <div className="text-sm text-gray-400 mb-1">Current Pool</div>
+            <div className="text-xl font-bold text-green-500">{Number(poolBalanceEth).toFixed(4)} ETH</div>
+          </div>
+
+          {hasUserBid && (
+            <div>
+              <div className="text-xs text-blue-400 mb-1">Your Bid</div>
+              <div className="text-lg font-semibold text-blue-300">{Number(userBidBalanceEth).toFixed(4)} ETH</div>
+            </div>
+          )}
         </div>
 
         {!auctionEnded && !character.isWinner && (
           <div className="space-y-3">
             <EtherInput value={bidAmount} onChange={setBidAmount} placeholder="Enter bid amount" />
+            {hasUserBid && (
+              <EtherInput
+                value={withdrawAmount}
+                onChange={setWithdrawAmount}
+                placeholder={`Withdraw (max ${Number(userBidBalanceEth).toFixed(4)} ETH)`}
+              />
+            )}
           </div>
         )}
       </CardContent>
 
       {!auctionEnded && !character.isWinner && (
-        <CardFooter>
+        <CardFooter className="flex flex-col space-y-2">
           <Button
             onClick={handleBid}
             disabled={!bidAmount || parseFloat(bidAmount) <= 0}
@@ -106,6 +150,21 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
           >
             Place Bid
           </Button>
+
+          {hasUserBid && (
+            <Button
+              onClick={handleWithdrawBid}
+              disabled={
+                !withdrawAmount ||
+                parseFloat(withdrawAmount) <= 0 ||
+                parseFloat(withdrawAmount) > parseFloat(userBidBalanceEth)
+              }
+              className="w-full"
+              variant="outline"
+            >
+              Withdraw Bid
+            </Button>
+          )}
         </CardFooter>
       )}
     </Card>

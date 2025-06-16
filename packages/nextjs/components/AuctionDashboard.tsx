@@ -91,8 +91,12 @@ export const AuctionDashboard: React.FC = () => {
     functionName: "AUCTION_DURATION_TIME",
   });
 
-  // Write contract hook for placing bids
+  // Write contract hooks for placing and withdrawing bids
   const { writeContractAsync: writeBid } = useScaffoldWriteContract({
+    contractName: "AuctionVault",
+  });
+
+  const { writeContractAsync: writeWithdrawBid } = useScaffoldWriteContract({
     contractName: "AuctionVault",
   });
 
@@ -110,6 +114,27 @@ export const AuctionDashboard: React.FC = () => {
       });
     } catch (error) {
       console.error("Error placing bid:", error);
+    }
+  };
+
+  const handleWithdrawBid = async (characterIndex: number, amount: string): Promise<void> => {
+    if (!connectedAddress) {
+      alert("Please connect your wallet to withdraw bid");
+      return;
+    }
+
+    if (!currentAuctionId) {
+      alert("No active auction found");
+      return;
+    }
+
+    try {
+      await writeWithdrawBid({
+        functionName: "withdrawBid",
+        args: [currentAuctionId, characterIndex, parseEther(amount)],
+      });
+    } catch (error) {
+      console.error("Error withdrawing bid:", error);
     }
   };
 
@@ -165,7 +190,9 @@ export const AuctionDashboard: React.FC = () => {
                       key={index}
                       character={character}
                       characterIndex={index}
+                      currentAuctionId={currentAuctionId}
                       onBid={handleBid}
+                      onWithdrawBid={handleWithdrawBid}
                       auctionEnded={isAuctionExpired}
                       className="h-full"
                     />
