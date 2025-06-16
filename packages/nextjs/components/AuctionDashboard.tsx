@@ -16,11 +16,6 @@ interface Character {
   isWinner: boolean;
 }
 
-interface Auction {
-  characters: [Character, Character, Character];
-  endTime: bigint;
-}
-
 export const AuctionDashboard: React.FC = () => {
   const { address: connectedAddress } = useAccount();
 
@@ -29,18 +24,71 @@ export const AuctionDashboard: React.FC = () => {
     contractName: "AuctionVault",
     functionName: "auctionId",
   });
+  console.log("auction id: ", currentAuctionId);
 
-  // Read current auction data
-  const { data: currentAuction } = useScaffoldReadContract({
+  // Read character data for all three characters in parallel
+  const { data: character0Data } = useScaffoldReadContract({
     contractName: "AuctionVault",
-    functionName: "auctions",
-    args: currentAuctionId ? [currentAuctionId] : undefined,
-  }) as { data: Auction | undefined };
+    functionName: "getAuctionCharacterData",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
+    args: currentAuctionId !== undefined ? [currentAuctionId, 0n] : undefined,
+  });
+
+  const { data: character1Data } = useScaffoldReadContract({
+    contractName: "AuctionVault",
+    functionName: "getAuctionCharacterData",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
+    args: currentAuctionId !== undefined ? [currentAuctionId, 1n] : undefined,
+  });
+
+  const { data: character2Data } = useScaffoldReadContract({
+    contractName: "AuctionVault",
+    functionName: "getAuctionCharacterData",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
+    args: currentAuctionId !== undefined ? [currentAuctionId, 2n] : undefined,
+  });
+
+  // Transform the data into Character objects
+  const characters: Character[] = [];
+  if (character0Data) {
+    characters[0] = {
+      characterURI: character0Data[0],
+      name: character0Data[1],
+      symbol: character0Data[2],
+      poolBalance: character0Data[3],
+      isWinner: character0Data[4],
+    };
+  }
+  if (character1Data) {
+    characters[1] = {
+      characterURI: character1Data[0],
+      name: character1Data[1],
+      symbol: character1Data[2],
+      poolBalance: character1Data[3],
+      isWinner: character1Data[4],
+    };
+  }
+  if (character2Data) {
+    characters[2] = {
+      characterURI: character2Data[0],
+      name: character2Data[1],
+      symbol: character2Data[2],
+      poolBalance: character2Data[3],
+      isWinner: character2Data[4],
+    };
+  }
 
   // Read auction end time
-  const { data: auctionEndTime } = useScaffoldReadContract({
+  const { data: currentAuctionEndTime } = useScaffoldReadContract({
     contractName: "AuctionVault",
     functionName: "getCurrentAuctionEndTime",
+  });
+  console.log("auction end time: ", currentAuctionEndTime);
+
+  // Read auction duration from Config contract
+  const { data: auctionDuration } = useScaffoldReadContract({
+    contractName: "Config",
+    functionName: "AUCTION_DURATION_TIME",
   });
 
   // Write contract hook for placing bids
@@ -65,9 +113,10 @@ export const AuctionDashboard: React.FC = () => {
     }
   };
 
-  const isAuctionExpired = auctionEndTime ? Date.now() / 1000 >= Number(auctionEndTime) : false;
+  const isAuctionExpired = currentAuctionEndTime ? Date.now() / 1000 >= Number(currentAuctionEndTime) : false;
+  const hasCharacterData = characters.length > 0 && characters.some(char => char !== undefined);
 
-  if (!currentAuction || !auctionEndTime) {
+  if (!hasCharacterData || !currentAuctionEndTime || !auctionDuration) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -95,34 +144,47 @@ export const AuctionDashboard: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Auction Timer */}
-            <AuctionTimer endTime={auctionEndTime} className="max-w-md mx-auto" />
-
-            {/* Character Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {currentAuction.characters.map((character, index) => (
-                <CharacterCard
-                  key={index}
-                  character={character}
-                  characterIndex={index}
-                  onBid={handleBid}
-                  auctionEnded={isAuctionExpired}
-                  className="h-full"
+            {!currentAuctionId || !hasCharacterData || !currentAuctionEndTime || !auctionDuration ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+                <p className="text-gray-400">Loading auction data...</p>
+              </div>
+            ) : (
+              <>
+                {/* Auction Timer */}
+                <AuctionTimer
+                  endTime={currentAuctionEndTime}
+                  auctionDuration={auctionDuration}
+                  className="max-w-md mx-auto"
                 />
-              ))}
-            </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-center space-x-4 mt-8">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => (window.location.href = "/past-auctions")}
-                className="px-8"
-              >
-                View Past Auctions
-              </Button>
-            </div>
+                {/* Character Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {characters.map((character, index) => (
+                    <CharacterCard
+                      key={index}
+                      character={character}
+                      characterIndex={index}
+                      onBid={handleBid}
+                      auctionEnded={isAuctionExpired}
+                      className="h-full"
+                    />
+                  ))}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-center space-x-4 mt-8">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => (window.location.href = "/past-auctions")}
+                    className="px-8"
+                  >
+                    View Past Auctions
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

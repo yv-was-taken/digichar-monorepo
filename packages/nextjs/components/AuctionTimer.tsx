@@ -6,17 +6,19 @@ import { Progress } from "~~/components/ui/progress";
 
 interface AuctionTimerProps {
   endTime: bigint;
+  auctionDuration: bigint;
   className?: string;
 }
 
-export const AuctionTimer: React.FC<AuctionTimerProps> = ({ endTime, className }) => {
+export const AuctionTimer: React.FC<AuctionTimerProps> = ({ endTime, auctionDuration, className }) => {
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
     minutes: number;
     seconds: number;
     total: number;
-  }>({ days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 });
+    progressPercentage: number;
+  }>({ days: 0, hours: 0, minutes: 0, seconds: 0, total: 0, progressPercentage: 0 });
 
   useEffect(() => {
     const updateTimer = () => {
@@ -30,9 +32,14 @@ export const AuctionTimer: React.FC<AuctionTimerProps> = ({ endTime, className }
         const minutes = Math.floor((difference % (60 * 60)) / 60);
         const seconds = Math.floor(difference % 60);
 
-        setTimeLeft({ days, hours, minutes, seconds, total: difference });
+        // Calculate progress percentage
+        const duration = Number(auctionDuration);
+        const timeElapsed = duration - difference;
+        const progressPercentage = Math.max(0, Math.min((1 - timeElapsed / duration) * 100, 100));
+
+        setTimeLeft({ days, hours, minutes, seconds, total: difference, progressPercentage });
       } else {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 });
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, total: 0, progressPercentage: 100 });
       }
     };
 
@@ -40,14 +47,13 @@ export const AuctionTimer: React.FC<AuctionTimerProps> = ({ endTime, className }
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [endTime]);
+  }, [endTime, auctionDuration]);
 
   const formatTime = (time: number): string => {
     return time.toString().padStart(2, "0");
   };
 
   const isExpired = timeLeft.total <= 0;
-  const progressPercentage = Math.min((timeLeft.total / (7 * 24 * 60 * 60)) * 100, 100);
 
   return (
     <Card className={`border-red-600 ${className}`}>
@@ -79,7 +85,7 @@ export const AuctionTimer: React.FC<AuctionTimerProps> = ({ endTime, className }
                   <div className="text-xs text-gray-400">SECONDS</div>
                 </div>
               </div>
-              <Progress value={progressPercentage} className="w-full" />
+              <Progress value={timeLeft.progressPercentage} className="w-full" />
             </>
           )}
         </div>

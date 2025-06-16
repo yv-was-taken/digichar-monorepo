@@ -99,26 +99,29 @@ const PastAuctions: NextPage = () => {
   const { data: auction1 } = useScaffoldReadContract({
     contractName: "AuctionVault",
     functionName: "auctions",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
     args: pastAuctionIds.length > 0 ? [BigInt(pastAuctionIds[0])] : undefined,
   });
 
   const { data: auction2 } = useScaffoldReadContract({
     contractName: "AuctionVault",
     functionName: "auctions",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
     args: pastAuctionIds.length > 1 ? [BigInt(pastAuctionIds[1])] : undefined,
   });
 
   const { data: auction3 } = useScaffoldReadContract({
     contractName: "AuctionVault",
     functionName: "auctions",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
     args: pastAuctionIds.length > 2 ? [BigInt(pastAuctionIds[2])] : undefined,
   });
 
   // Combine available auction data
   const pastAuctions = [
-    ...(auction1 && pastAuctionIds[0] ? [{ id: pastAuctionIds[0], auction: auction1 }] : []),
-    ...(auction2 && pastAuctionIds[1] ? [{ id: pastAuctionIds[1], auction: auction2 }] : []),
-    ...(auction3 && pastAuctionIds[2] ? [{ id: pastAuctionIds[2], auction: auction3 }] : []),
+    ...(auction1 && pastAuctionIds[0] ? [{ id: pastAuctionIds[0], auction: auction1 as any }] : []),
+    ...(auction2 && pastAuctionIds[1] ? [{ id: pastAuctionIds[1], auction: auction2 as any }] : []),
+    ...(auction3 && pastAuctionIds[2] ? [{ id: pastAuctionIds[2], auction: auction3 as any }] : []),
   ];
 
   const handleViewToken = (auctionId: number) => {

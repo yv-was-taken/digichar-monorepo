@@ -77,6 +77,13 @@ contract AuctionVault {
         uint256 endTime;
     }
 
+    function getAuctionCharacterData(uint _auctionId, uint _characterIndex) external view returns (string memory, string memory, string memory, uint, bool) {
+      Character storage character = auctions[_auctionId].characters[_characterIndex];
+
+      return (character.characterURI, character.name, character.symbol, character.poolBalance, character.isWinner);
+
+    }
+
     function getCurrentAuctionEndTime() public view returns (uint256) {
         return auctions[auctionId].endTime;
     }

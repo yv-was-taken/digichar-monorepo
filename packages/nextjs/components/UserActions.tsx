@@ -30,6 +30,7 @@ export const UserActions: React.FC = () => {
   const { data: unclaimedTokens } = useScaffoldReadContract({
     contractName: "AuctionVault",
     functionName: "checkUnclaimedTokens",
+    // @ts-ignore - Type assertion for scaffold-eth hook compatibility
     args: connectedAddress && currentAuctionId ? [connectedAddress, currentAuctionId - 1n] : undefined,
   });
 

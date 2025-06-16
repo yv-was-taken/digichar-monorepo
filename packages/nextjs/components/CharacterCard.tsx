@@ -39,6 +39,14 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 
   const poolBalanceEth = formatEther(character.poolBalance);
 
+  // Convert IPFS hash to full URL if needed
+  const getImageUrl = (uri: string) => {
+    if (uri.startsWith("http")) {
+      return uri;
+    }
+    return `https://ipfs.io/ipfs/${uri}`;
+  };
+
   return (
     <Card
       className={`${className} ${character.isWinner ? "border-green-500 shadow-green-500/20" : "border-red-600"} transition-all duration-300 hover:shadow-lg hover:shadow-red-500/20`}
@@ -52,7 +60,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
         <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-800">
           {character.characterURI ? (
             <Image
-              src={character.characterURI}
+              src={getImageUrl(character.characterURI)}
               alt={character.name}
               fill
               className="object-cover"

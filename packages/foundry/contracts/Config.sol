@@ -36,7 +36,8 @@ contract Config {
     uint256 public PROTOCOL_ADMIN_TAX_BPS = 100; // 1%
     uint256 public CHARACTER_OWNER_TAX_BPS = 100; // 1%
     uint256 public LP_LOCK_BPS = 75; // 0.75%
-    uint256 public AUCTION_DURATION_TIME = 4 hours;
+    //@dev change to 24 hours come prod.
+    uint256 public AUCTION_DURATION_TIME = 10 minutes;
 
     event AuctionDurationSet(address indexed _protocolAdmin, uint256 indexed _auctionDuration);
 
