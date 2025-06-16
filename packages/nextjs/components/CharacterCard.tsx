@@ -65,7 +65,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 
   const poolBalanceEth = formatEther(character.poolBalance);
   const userBidBalanceEth = userBidBalance ? formatEther(userBidBalance) : "0";
-  const hasUserBid = userBidBalance && userBidBalance > 0n;
+  const hasUserBid = Boolean(userBidBalance && userBidBalance > 0n);
 
   // Convert IPFS hash to full URL if needed
   const getImageUrl = (uri: string) => {
