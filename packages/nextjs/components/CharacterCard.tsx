@@ -23,6 +23,7 @@ interface CharacterCardProps {
   onWithdrawBid: (characterIndex: number, amount: string) => void;
   auctionEnded: boolean;
   className?: string;
+  isPastAuction?: boolean;
 }
 
 export const CharacterCard: React.FC<CharacterCardProps> = ({
@@ -33,6 +34,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
   onWithdrawBid,
   auctionEnded,
   className,
+  isPastAuction = false,
 }) => {
   const [bidAmount, setBidAmount] = useState<string>("");
   const [withdrawAmount, setWithdrawAmount] = useState<string>("");
@@ -114,19 +116,19 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 
         <div className="text-center space-y-2">
           <div>
-            <div className="text-sm text-gray-400 mb-1">Current Pool</div>
+            <div className="text-sm text-gray-400 mb-1">{isPastAuction ? "Final Pool" : "Current Pool"}</div>
             <div className="text-xl font-bold text-green-500">{Number(poolBalanceEth).toFixed(4)} ETH</div>
           </div>
 
           {hasUserBid && (
             <div>
-              <div className="text-xs text-blue-400 mb-1">Your Bid</div>
+              <div className="text-xs text-blue-400 mb-1">{isPastAuction ? "Your Final Bid" : "Your Bid"}</div>
               <div className="text-lg font-semibold text-blue-300">{Number(userBidBalanceEth).toFixed(4)} ETH</div>
             </div>
           )}
         </div>
 
-        {!auctionEnded && !character.isWinner && (
+        {!auctionEnded && !character.isWinner && !isPastAuction && (
           <div className="space-y-3">
             <EtherInput value={bidAmount} onChange={setBidAmount} placeholder="Enter bid amount" />
             {hasUserBid && (
@@ -138,9 +140,18 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
             )}
           </div>
         )}
+
+        {isPastAuction && (
+          <div className="text-center p-3 bg-gray-800 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Auction Completed</div>
+            <div className="text-xs text-gray-500">
+              {character.isWinner ? "🏆 This character won the auction!" : "This character did not win"}
+            </div>
+          </div>
+        )}
       </CardContent>
 
-      {!auctionEnded && !character.isWinner && (
+      {!auctionEnded && !character.isWinner && !isPastAuction && (
         <CardFooter className="flex flex-col space-y-2">
           <Button
             onClick={handleBid}
@@ -165,6 +176,14 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
               Withdraw Bid
             </Button>
           )}
+        </CardFooter>
+      )}
+
+      {isPastAuction && hasUserBid && !character.isWinner && (
+        <CardFooter>
+          <div className="w-full text-center text-sm text-yellow-400">
+            💡 You can withdraw your bid from this completed auction
+          </div>
         </CardFooter>
       )}
     </Card>

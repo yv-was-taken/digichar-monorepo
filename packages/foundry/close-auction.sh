@@ -34,6 +34,9 @@ echo "✅ Timestamp advanced successfully!"
 echo "🔗 Running CloseAuction script..."
 
 # Run the CloseAuction script
-forge script script/CloseAuction.s.sol --rpc-url $RPC_URL --broadcast
-
-echo "🎉 Auction closed successfully!"
+if forge script script/CloseAuction.s.sol --rpc-url $RPC_URL --broadcast; then
+    echo "🎉 Auction closed successfully!"
+else
+    echo "❌ Failed to close auction. Please check the error messages above."
+    exit 1
+fi

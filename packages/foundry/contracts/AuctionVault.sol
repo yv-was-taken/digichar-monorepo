@@ -97,7 +97,6 @@ contract AuctionVault {
         public
         onlyProtcolAdmin
     {
-        auctionId++;
         Auction storage newAuction = auctions[auctionId];
         newAuction.endTime = block.timestamp + config.AUCTION_DURATION_TIME();
 

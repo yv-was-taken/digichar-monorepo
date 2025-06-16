@@ -25,7 +25,7 @@ contract AuctionVaultTest is Test {
     address public user3 = address(0x4);
     address public nonprotocolAdmin = address(0x5);
 
-    uint256 public constant DEFAULT_AUCTION_DURATION = 4 hours;
+    uint256 public AUCTION_DURATION_TIME;
 
     event AuctionTimeChanged(uint256 _auctionDurationTime);
     event DigicharFactorySet(address _digicharFactory);
@@ -38,6 +38,8 @@ contract AuctionVaultTest is Test {
         vm.startPrank(protocolAdmin);
 
         config = new Config();
+
+        AUCTION_DURATION_TIME = config.AUCTION_DURATION_TIME();
 
         auctionVault = new AuctionVault(address(config));
         digicharFactory = new DigicharFactory(address(config));
@@ -68,13 +70,12 @@ contract AuctionVaultTest is Test {
         string[3] memory names = ["name1", "name2", "name3"];
         string[3] memory symbols = ["SYM1", "SYM2", "SYM3"];
 
-        uint256 auctionIdBefore = auctionVault.auctionId();
-        uint256 expectedEndTime = block.timestamp + DEFAULT_AUCTION_DURATION;
+        uint256 expectedEndTime = block.timestamp + AUCTION_DURATION_TIME;
 
         vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
-        assertEq(auctionVault.auctionId(), auctionIdBefore + 1);
+        assert(auctionVault.getCurrentAuctionEndTime() > 0);
 
         // Verify auction details
         uint256 endTime = auctionVault.getCurrentAuctionEndTime();
@@ -135,7 +136,7 @@ contract AuctionVaultTest is Test {
         auctionVault.createAuction(uris, names, symbols);
 
         // Fast forward past auction end
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(user1);
         vm.expectRevert(AuctionVault.AuctionExpired.selector);
@@ -284,7 +285,7 @@ contract AuctionVaultTest is Test {
         auctionVault.bid{ value: 1 ether }(winningCharacterIndex);
 
         // Fast forward past auction end
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, winningCharacterIndex);
@@ -315,7 +316,7 @@ contract AuctionVaultTest is Test {
         auctionVault.bid{ value: 0.5 ether }(2);
 
         // Fast forward past auction end
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, winningCharacterIndex);
@@ -351,7 +352,7 @@ contract AuctionVaultTest is Test {
         vm.prank(protocolAdmin);
         auctionVault.createAuction(uris, names, symbols);
 
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(nonprotocolAdmin);
         vm.expectRevert(AuctionVault.OnlyProtocolAdmin.selector);
@@ -390,7 +391,7 @@ contract AuctionVaultTest is Test {
         vm.prank(user2);
         auctionVault.bid{ value: 3 ether }(winningCharacterIndex);
 
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, winningCharacterIndex);
@@ -440,7 +441,7 @@ contract AuctionVaultTest is Test {
         vm.prank(user2);
         auctionVault.bid{ value: 1 ether }(0);
 
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, 0);
@@ -470,7 +471,7 @@ contract AuctionVaultTest is Test {
         vm.prank(user2);
         auctionVault.bid{ value: 3 ether }(winningCharacterIndex);
 
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + DEFAULT_AUCTION_DURATION);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, winningCharacterIndex);
@@ -502,7 +503,7 @@ contract AuctionVaultTest is Test {
         vm.prank(user1);
         auctionVault.bid{ value: 1 ether }(winningCharacterIndex);
 
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, winningCharacterIndex);
@@ -549,7 +550,7 @@ contract AuctionVaultTest is Test {
         vm.prank(user1);
         auctionVault.bid{value: 1 ether}(0);
         
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
         
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user1, 0);
@@ -567,7 +568,7 @@ contract AuctionVaultTest is Test {
         vm.prank(user2);
         auctionVault.bid{value: 2 ether}(1);
         
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
         
         vm.prank(protocolAdmin);
         auctionVault.closeCurrentAuction(user2, 1);
@@ -658,7 +659,7 @@ contract AuctionVaultTest is Test {
         auctionVault.createAuction(uris, names, symbols);
 
         // No bids placed
-        vm.warp(block.timestamp + DEFAULT_AUCTION_DURATION + 1);
+        vm.warp(block.timestamp + AUCTION_DURATION_TIME + 1);
 
         // Should still be able to close auction even with no bids
         vm.prank(protocolAdmin);
