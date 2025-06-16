@@ -11,8 +11,8 @@ import { Address } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
-import { usePastAuctions } from "~~/hooks/scaffold-eth/usePastAuctions";
-import { useUserAuctionHistory } from "~~/hooks/scaffold-eth/useUserAuctionHistory";
+import { usePastAuctionsSimple } from "~~/hooks/scaffold-eth/usePastAuctionsSimple";
+import { useUserAuctionHistorySimple } from "~~/hooks/scaffold-eth/useUserAuctionHistorySimple";
 
 const PastAuctions: NextPage = () => {
   const { address: connectedAddress } = useAccount();
@@ -21,11 +21,11 @@ const PastAuctions: NextPage = () => {
   const auctionsPerPage = 10;
 
   // Fetch past auctions data
-  const { pastAuctions, isLoading } = usePastAuctions(50);
+  const { pastAuctions, isLoading } = usePastAuctionsSimple();
 
   // Get user-specific auction history
   const pastAuctionIds = pastAuctions.map(auction => auction.auctionId);
-  const { userAuctionHistory, userStats } = useUserAuctionHistory(pastAuctionIds);
+  const { userAuctionHistory, userStats } = useUserAuctionHistorySimple(pastAuctionIds);
 
   // Contract interaction for claiming tokens
   const { writeContractAsync: claimTokens } = useScaffoldWriteContract({

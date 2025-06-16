@@ -35,20 +35,25 @@ export function usePastAuctions(limit: number = 10) {
     return Array.from({ length: actualLimit }, (_, i) => numPastAuctions - i);
   }, [currentAuctionId, limit]);
 
-  // Read auction data for each past auction
-  const auctionQueries = pastAuctionIds.map(auctionId => {
+  // Fixed number of auction queries to avoid hook order issues
+  const maxAuctions = 50;
+  const auctionQueries = Array.from({ length: maxAuctions }, (_, index) => {
+    const auctionId = pastAuctionIds[index];
+
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { data: auctionData } = useScaffoldReadContract({
       contractName: "AuctionVault",
       functionName: "auctions",
-      args: [BigInt(auctionId)],
+      // @ts-ignore
+      args: auctionId ? [BigInt(auctionId)] : undefined,
     });
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { data: tokenAddress } = useScaffoldReadContract({
       contractName: "AuctionVault",
       functionName: "getCharacterTokenAddress",
-      args: [BigInt(auctionId)],
+      // @ts-ignore
+      args: auctionId ? [BigInt(auctionId)] : undefined,
     });
 
     return {
@@ -62,7 +67,7 @@ export function usePastAuctions(limit: number = 10) {
   const pastAuctions = useMemo(() => {
     return auctionQueries
       .map(({ auctionId, auctionData, tokenAddress }) => {
-        if (!auctionData) return null;
+        if (!auctionId || !auctionData) return null;
 
         const auction = auctionData as any;
         const characters = auction[0] as Character[];
