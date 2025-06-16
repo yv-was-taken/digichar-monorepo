@@ -77,3 +77,5 @@ SE-2 provides a set of pre-built React components for common Ethereum use cases:
 They live under `packages/nextjs/components/scaffold-eth`.
 
 Find the relevant information from the documentation and the codebase. Think step by step before answering the question.
+
+- Just do `git add .` when committing changes
