@@ -45,9 +45,12 @@ contract DeployAuctionContracts is ScaffoldETHDeploy {
 
         // Optionally create a sample auction for testing
         //@dev this is great for development, but come production we want to do this externally,
-        // so make sure to remove this 
-        string[3] memory characterURIs =
-            ["QmRRPWG96cmgTn2qSzjwr2qvfNEuhunv6FNeMFGa9bx6mQ", "QmPbxeGcXhYQQNgsC6a36dDyYUcHgMLnGKnF8pVFmGsvqi", "QmcJYkCKK7QPmYWjp4FD2e3Lv5WCGFuHNUByvGKBaytif4"];
+        // so make sure to remove this
+        string[3] memory characterURIs = [
+            "QmRRPWG96cmgTn2qSzjwr2qvfNEuhunv6FNeMFGa9bx6mQ",
+            "QmPbxeGcXhYQQNgsC6a36dDyYUcHgMLnGKnF8pVFmGsvqi",
+            "QmcJYkCKK7QPmYWjp4FD2e3Lv5WCGFuHNUByvGKBaytif4"
+        ];
         string[3] memory names = ["Dragon", "Phoenix", "Griffin"];
         string[3] memory symbols = ["DRG", "PHX", "GRF"];
 
