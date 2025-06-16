@@ -51,24 +51,28 @@ export const EtherInput = ({
   onChange,
   disabled,
   usdMode,
-}: CommonInputProps & { usdMode?: boolean }) => {
+  hideToggle,
+}: CommonInputProps & { usdMode?: boolean; hideToggle?: boolean }) => {
   const [transitoryDisplayValue, setTransitoryDisplayValue] = useState<string>();
   const nativeCurrencyPrice = useGlobalState(state => state.nativeCurrency.price);
   const isNativeCurrencyPriceFetching = useGlobalState(state => state.nativeCurrency.isFetching);
 
   const { displayUsdMode, toggleDisplayUsdMode } = useDisplayUsdMode({ defaultUsdMode: usdMode });
 
+  // Force ETH mode when hideToggle is true
+  const actualDisplayUsdMode = hideToggle ? false : displayUsdMode;
+
   // The displayValue is derived from the ether value that is controlled outside of the component
   // In usdMode, it is converted to its usd value, in regular mode it is unaltered
   const displayValue = useMemo(() => {
-    const newDisplayValue = etherValueToDisplayValue(displayUsdMode, value, nativeCurrencyPrice || 0);
+    const newDisplayValue = etherValueToDisplayValue(actualDisplayUsdMode, value, nativeCurrencyPrice || 0);
     if (transitoryDisplayValue && parseFloat(newDisplayValue) === parseFloat(transitoryDisplayValue)) {
       return transitoryDisplayValue;
     }
     // Clear any transitory display values that might be set
     setTransitoryDisplayValue(undefined);
     return newDisplayValue;
-  }, [nativeCurrencyPrice, transitoryDisplayValue, displayUsdMode, value]);
+  }, [nativeCurrencyPrice, transitoryDisplayValue, actualDisplayUsdMode, value]);
 
   const handleChangeNumber = (newValue: string) => {
     if (newValue && !SIGNED_NUMBER_REGEX.test(newValue)) {
@@ -77,7 +81,7 @@ export const EtherInput = ({
 
     // Following condition is a fix to prevent usdMode from experiencing different display values
     // than what the user entered. This can happen due to floating point rounding errors that are introduced in the back and forth conversion
-    if (displayUsdMode) {
+    if (actualDisplayUsdMode) {
       const decimals = newValue.split(".")[1];
       if (decimals && decimals.length > MAX_DECIMALS_USD) {
         return;
@@ -92,7 +96,7 @@ export const EtherInput = ({
       setTransitoryDisplayValue(undefined);
     }
 
-    const newEthValue = displayValueToEtherValue(displayUsdMode, newValue, nativeCurrencyPrice || 0);
+    const newEthValue = displayValueToEtherValue(actualDisplayUsdMode, newValue, nativeCurrencyPrice || 0);
     onChange(newEthValue);
   };
 
@@ -103,25 +107,27 @@ export const EtherInput = ({
       placeholder={placeholder}
       onChange={handleChangeNumber}
       disabled={disabled}
-      prefix={<span className="pl-4 -mr-2 text-accent self-center">{displayUsdMode ? "$" : "Ξ"}</span>}
+      prefix={<span className="pl-4 -mr-2 text-accent self-center">{actualDisplayUsdMode ? "$" : "Ξ"}</span>}
       suffix={
-        <div
-          className={`${
-            nativeCurrencyPrice > 0
-              ? ""
-              : "tooltip tooltip-secondary before:content-[attr(data-tip)] before:right-[-10px] before:left-auto before:transform-none"
-          }`}
-          data-tip={isNativeCurrencyPriceFetching ? "Fetching price" : "Unable to fetch price"}
-        >
-          <button
-            className="btn btn-primary h-[2.2rem] min-h-[2.2rem]"
-            onClick={toggleDisplayUsdMode}
-            disabled={!displayUsdMode && !nativeCurrencyPrice}
-            type="button"
+        hideToggle ? undefined : (
+          <div
+            className={`${
+              nativeCurrencyPrice > 0
+                ? ""
+                : "tooltip tooltip-secondary before:content-[attr(data-tip)] before:right-[-10px] before:left-auto before:transform-none"
+            }`}
+            data-tip={isNativeCurrencyPriceFetching ? "Fetching price" : "Unable to fetch price"}
           >
-            <ArrowsRightLeftIcon className="h-3 w-3 cursor-pointer" aria-hidden="true" />
-          </button>
-        </div>
+            <button
+              className="btn btn-primary h-[2.2rem] min-h-[2.2rem]"
+              onClick={toggleDisplayUsdMode}
+              disabled={!displayUsdMode && !nativeCurrencyPrice}
+              type="button"
+            >
+              <ArrowsRightLeftIcon className="h-3 w-3 cursor-pointer" aria-hidden="true" />
+            </button>
+          </div>
+        )
       }
     />
   );

@@ -130,12 +130,13 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 
         {!auctionEnded && !character.isWinner && !isPastAuction && (
           <div className="space-y-3">
-            <EtherInput value={bidAmount} onChange={setBidAmount} placeholder="Enter bid amount" />
+            <EtherInput value={bidAmount} onChange={setBidAmount} placeholder="Enter bid amount" hideToggle />
             {hasUserBid && (
               <EtherInput
                 value={withdrawAmount}
                 onChange={setWithdrawAmount}
                 placeholder={`Withdraw (max ${Number(userBidBalanceEth).toFixed(4)} ETH)`}
+                hideToggle
               />
             )}
           </div>
