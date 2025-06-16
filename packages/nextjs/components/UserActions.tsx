@@ -80,7 +80,7 @@ export const UserActions: React.FC = () => {
     return null; // Don't show user actions if wallet not connected
   }
 
-  const hasUnclaimedTokens = unclaimedTokens && unclaimedTokens > 0n;
+  const hasUnclaimedTokens = Boolean(unclaimedTokens && unclaimedTokens > 0n);
   const previousAuctionId = currentAuctionId && currentAuctionId > 1n ? Number(currentAuctionId) - 1 : null;
 
   return (
@@ -97,8 +97,8 @@ export const UserActions: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="text-gray-300">
               <p>
-                You have <span className="text-green-500 font-bold">{formatEther(unclaimedTokens)} tokens</span> to
-                claim from Auction #{previousAuctionId}
+                You have <span className="text-green-500 font-bold">{formatEther(unclaimedTokens || 0n)} tokens</span>{" "}
+                to claim from Auction #{previousAuctionId}
               </p>
             </div>
             <Button
