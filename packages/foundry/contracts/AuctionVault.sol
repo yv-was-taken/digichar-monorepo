@@ -131,6 +131,7 @@ contract AuctionVault {
         (bool success,) = payable(msg.sender).call{ value: _amount }("");
         require(success, "ETH transfer failed");
         userBidBalance[msg.sender][_auctionId][_characterIndex] -= _amount;
+        auctions[auctionId].characters[_characterIndex].poolBalance -= _amount;
         emit BidWithdrawn(auctionId, msg.sender, _amount);
     }
 
