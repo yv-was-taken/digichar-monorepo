@@ -9,14 +9,8 @@ import { DigicharOwnershipCertificate } from "../contracts/DigicharOwnershipCert
 
 contract DeployAuctionContracts is ScaffoldETHDeploy {
     function run() external {
-        //uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        //if (deployerPrivateKey == 0) {
-        //    revert InvalidPrivateKey(
-        //        "You don't have a deployer account. Make sure you have set DEPLOYER_PRIVATE_KEY in .env or use `yarn generate` to generate a new random account"
-        //    );
-        //}
-        //vm.startBroadcast(deployerPrivateKey);
-        vm.startBroadcast();
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
 
         // Deploy Config contract first
         Config config = new Config();

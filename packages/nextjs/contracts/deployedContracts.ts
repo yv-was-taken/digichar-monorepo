@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     Config: {
-      address: "0x3665a9bbe2cb907b6e298ed76aad70422bd67909",
+      address: "0x4e6069b73a2d3a79ca27700b1d300d9e0d3d4bff",
       abi: [
         {
           type: "constructor",
@@ -543,11 +543,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750043635.json",
+      deploymentFile: "run-1750067058.json",
       deploymentScript: "Deploy.s.sol",
     },
     AuctionVault: {
-      address: "0x92b014a477f73d02b777429e56c5590cbfcb521b",
+      address: "0xa0e9538cfdb2f3c84dd2df0c3f0ff2a46a9b16b8",
       abi: [
         {
           type: "constructor",
@@ -1007,11 +1007,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750043635.json",
+      deploymentFile: "run-1750067058.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharFactory: {
-      address: "0x3d0224d74750947e4203ae5bf207f709156fdb75",
+      address: "0xaeb5b4df3a478fd464f851fcd9022ec65e0d715b",
       abi: [
         {
           type: "constructor",
@@ -1197,11 +1197,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750043635.json",
+      deploymentFile: "run-1750067058.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharOwnershipCertificate: {
-      address: "0xa8822f729c2e6b9d7bbe73441e7d5e3f98928e8a",
+      address: "0x6635eb0e44cdd7d6dd81236ba1f1054666066537",
       abi: [
         {
           type: "constructor",
@@ -1645,7 +1645,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750043635.json",
+      deploymentFile: "run-1750067058.json",
       deploymentScript: "Deploy.s.sol",
     },
   },

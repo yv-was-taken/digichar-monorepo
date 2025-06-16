@@ -6,7 +6,8 @@ import { AuctionVault } from "../contracts/AuctionVault.sol";
 
 contract CloseAuction is ScaffoldETHDeploy {
     function run() external {
-        vm.startBroadcast();
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
 
         // Read the latest deployment data to get AuctionVault address
         string memory deploymentFile = "./broadcast/Deploy.s.sol/31337/run-latest.json";
