@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "account": "make account",
+    "account:fund": "node scripts-js/fundAccount.js",
     "account:generate": "node scripts-js/generateKeystore.js",
     "account:import": "node scripts-js/importAccount.js",
     "account:reveal-pk": "node scripts-js/revealPK.js",

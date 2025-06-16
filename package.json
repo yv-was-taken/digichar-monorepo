@@ -9,6 +9,7 @@
   },
   "scripts": {
     "account": "yarn foundry:account",
+    "account:fund": "yarn foundry:account-fund",
     "account:generate": "yarn foundry:generate",
     "account:import": "yarn foundry:account-import",
     "account:reveal-pk": "yarn workspace @se-2/foundry account:reveal-pk",
@@ -19,6 +20,7 @@
     "fork": "yarn foundry:fork",
     "format": "yarn next:format && yarn foundry:format",
     "foundry:account": "yarn workspace @se-2/foundry account",
+    "foundry:account-fund": "yarn workspace @se-2/foundry account:fund",
     "foundry:account-import": "yarn workspace @se-2/foundry account:import",
     "foundry:chain": "yarn workspace @se-2/foundry chain",
     "foundry:clean": "yarn workspace @se-2/foundry clean",
