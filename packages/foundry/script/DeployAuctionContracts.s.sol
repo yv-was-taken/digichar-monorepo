@@ -7,6 +7,8 @@ import { AuctionVault } from "../contracts/AuctionVault.sol";
 import { DigicharFactory } from "../contracts/DigicharFactory.sol";
 import { DigicharOwnershipCertificate } from "../contracts/DigicharOwnershipCertificate.sol";
 import { MockWETH } from "../contracts/mocks/MockWETH.sol";
+import { MockUniswapV2Factory } from "../contracts/mocks/MockUniswapV2Factory.sol";
+import { MockUniswapV2Router02 } from "../contracts/mocks/MockUniswapV2Router02.sol";
 
 contract DeployAuctionContracts is ScaffoldETHDeploy {
     function run() external {
@@ -43,13 +45,13 @@ contract DeployAuctionContracts is ScaffoldETHDeploy {
         MockWETH mockWETH = new MockWETH();
         console.logString(string.concat("MockWETH deployed at: ", vm.toString(address(mockWETH))));
 
-        // For local development, we'll use the MockWETH address for both factory and router
-        // since we don't need actual DEX functionality, just valid addresses
-        address mockFactory = address(mockWETH); // Reuse MockWETH address as factory
-        address mockRouter = address(mockWETH); // Reuse MockWETH address as router
+        // Deploy Mock Uniswap V2 Factory
+        MockUniswapV2Factory mockFactory = new MockUniswapV2Factory();
+        console.logString(string.concat("MockUniswapV2Factory deployed at: ", vm.toString(address(mockFactory))));
 
-        console.logString(string.concat("Using MockWETH address as Factory: ", vm.toString(mockFactory)));
-        console.logString(string.concat("Using MockWETH address as Router: ", vm.toString(mockRouter)));
+        // Deploy Mock Uniswap V2 Router
+        MockUniswapV2Router02 mockRouter = new MockUniswapV2Router02(address(mockFactory), address(mockWETH));
+        console.logString(string.concat("MockUniswapV2Router02 deployed at: ", vm.toString(address(mockRouter))));
 
         // Set the deployed contracts in Config
         config.setOwnershipCertificate(address(ownershipCertificate));
@@ -57,10 +59,10 @@ contract DeployAuctionContracts is ScaffoldETHDeploy {
         //@TODO this should be set in config only and not fed through constructor on DigicharOwnershipCertificate deployment
         config.setDigicharFactory(payable(address(digicharFactory)));
 
-        // Set mock DEX addresses in Config (for interface compliance only)
+        // Set mock DEX addresses in Config
         config.setWETH(address(mockWETH));
-        config.setSwapFactory(mockFactory);
-        config.setSwapRouter(mockRouter);
+        config.setSwapFactory(address(mockFactory));
+        config.setSwapRouter(address(mockRouter));
         console.logString("Mock DEX addresses configured in Config contract");
 
         // Optionally create a sample auction for testing

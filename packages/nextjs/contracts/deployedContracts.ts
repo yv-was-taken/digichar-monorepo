@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     Config: {
-      address: "0xbbd821d41c78368eb45d27ce21f938aa45aa301e",
+      address: "0x32992d0d7216903d249f1b351d7a36207ce3214e",
       abi: [
         {
           type: "constructor",
@@ -543,11 +543,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750186621.json",
+      deploymentFile: "run-1750190397.json",
       deploymentScript: "Deploy.s.sol",
     },
     AuctionVault: {
-      address: "0xec6a079e25a9cbe81421af751ce8d9fa471c0593",
+      address: "0xea2b9a899ef5000c23e95fc86d7be05ddce44db3",
       abi: [
         {
           type: "constructor",
@@ -1007,11 +1007,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750186621.json",
+      deploymentFile: "run-1750190397.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharFactory: {
-      address: "0xe2847c34be74650c7ae93fa9b11ed9406bcfb3ff",
+      address: "0xb4d674204c17feb68369d79569081efa7170e2c1",
       abi: [
         {
           type: "constructor",
@@ -1197,11 +1197,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750186621.json",
+      deploymentFile: "run-1750190397.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharOwnershipCertificate: {
-      address: "0x50f15260030275eb431f05d90ca08461a0264b52",
+      address: "0xbcc2488a5ecf7bc978350484659a4c87a3d20c67",
       abi: [
         {
           type: "constructor",
@@ -1645,11 +1645,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750186621.json",
+      deploymentFile: "run-1750190397.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockWETH: {
-      address: "0xb430251faddb1b2a83862e4adcdce27eb24dd861",
+      address: "0x224730b9bf364271d6a5ef82678098d16779cf2c",
       abi: [
         {
           type: "constructor",
@@ -2017,7 +2017,317 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750186621.json",
+      deploymentFile: "run-1750190397.json",
+      deploymentScript: "Deploy.s.sol",
+    },
+    MockUniswapV2Factory: {
+      address: "0x9f030d37d39ae06b5ecb1a889a7e56cea696aa87",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "allPairs",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "allPairsLength",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "createPair",
+          inputs: [
+            {
+              name: "tokenA",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "tokenB",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "pair",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "feeTo",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "feeToSetter",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPair",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "setFeeTo",
+          inputs: [
+            {
+              name: "_feeTo",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "setFeeToSetter",
+          inputs: [
+            {
+              name: "_feeToSetter",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "event",
+          name: "PairCreated",
+          inputs: [
+            {
+              name: "token0",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "token1",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "pair",
+              type: "address",
+              indexed: false,
+              internalType: "address",
+            },
+            {
+              name: "",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+      ],
+      inheritedFunctions: {},
+      deploymentFile: "run-1750190397.json",
+      deploymentScript: "Deploy.s.sol",
+    },
+    MockUniswapV2Router02: {
+      address: "0xde10837655d3ec50f549dc0fa924b1dda7bba320",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [
+            {
+              name: "factory_",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "WETH_",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "receive",
+          stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "WETH",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "WETHAddress",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "addLiquidityETH",
+          inputs: [
+            {
+              name: "token",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "amountTokenDesired",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "amountTokenMin",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "amountETHMin",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "to",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "deadline",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "amountToken",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "amountETH",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "liquidity",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "factory",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "factoryAddress",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+      ],
+      inheritedFunctions: {},
+      deploymentFile: "run-1750190397.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
