@@ -11,7 +11,7 @@ import { Address } from "~~/components/scaffold-eth";
 import { Button } from "~~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
 import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
-import { usePastAuctionsSimple } from "~~/hooks/scaffold-eth/usePastAuctionsSimple";
+import { usePastAuctions } from "~~/hooks/scaffold-eth/usePastAuctions";
 import { useUserAuctionHistorySimple } from "~~/hooks/scaffold-eth/useUserAuctionHistorySimple";
 
 const PastAuctions: NextPage = () => {
@@ -21,7 +21,8 @@ const PastAuctions: NextPage = () => {
   const auctionsPerPage = 10;
 
   // Fetch past auctions data
-  const { pastAuctions, isLoading } = usePastAuctionsSimple();
+  const { pastAuctions, isLoading } = usePastAuctions();
+  if (!isLoading) console.log("past auctions: ", pastAuctions);
 
   // Get user-specific auction history
   const pastAuctionIds = pastAuctions.map(auction => auction.auctionId);

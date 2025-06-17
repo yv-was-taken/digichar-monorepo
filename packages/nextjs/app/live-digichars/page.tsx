@@ -6,7 +6,7 @@ import type { NextPage } from "next";
 import { formatEther } from "viem";
 import { Address } from "~~/components/scaffold-eth";
 import { Card, CardContent, CardHeader, CardTitle } from "~~/components/ui/card";
-import { usePastAuctionsSimple } from "~~/hooks/scaffold-eth/usePastAuctionsSimple";
+import { usePastAuctions } from "~~/hooks/scaffold-eth/usePastAuctions";
 
 interface LiveCharacter {
   name: string;
@@ -19,7 +19,7 @@ interface LiveCharacter {
 }
 
 const LiveDigichars: NextPage = () => {
-  const { pastAuctions, isLoading } = usePastAuctionsSimple();
+  const { pastAuctions, isLoading } = usePastAuctions();
 
   const liveCharacters = useMemo(() => {
     const characters: LiveCharacter[] = [];

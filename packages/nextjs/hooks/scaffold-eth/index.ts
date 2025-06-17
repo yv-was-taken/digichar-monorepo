@@ -8,7 +8,6 @@ export * from "./useInitializeNativeCurrencyPrice";
 export * from "./useNetworkColor";
 export * from "./useOutsideClick";
 export * from "./usePastAuctions";
-export * from "./usePastAuctionsSimple";
 export * from "./useScaffoldContract";
 export * from "./useScaffoldEventHistory";
 export * from "./useScaffoldReadContract";

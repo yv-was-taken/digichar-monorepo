@@ -87,8 +87,13 @@ contract AuctionVault {
         return (character.characterURI, character.name, character.symbol, character.poolBalance, character.isWinner);
     }
 
+    //@TODO replace all instances of `getCurrentAuctionEndTime` with `getAuctionEndTime(uint _auctionId)`
     function getCurrentAuctionEndTime() public view returns (uint256) {
         return auctions[auctionId].endTime;
+    }
+    function getAuctionEndTime(uint _auctionId) public view returns (uint256) {
+      return auctions[_auctionId].endTime;
+
     }
 
     //contract core

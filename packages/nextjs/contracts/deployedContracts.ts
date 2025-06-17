@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     Config: {
-      address: "0x32992d0d7216903d249f1b351d7a36207ce3214e",
+      address: "0xd9a48745d7aa5e48de4fb9afb7130ab74b331718",
       abi: [
         {
           type: "constructor",
@@ -543,11 +543,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750190397.json",
+      deploymentFile: "run-1750198566.json",
       deploymentScript: "Deploy.s.sol",
     },
     AuctionVault: {
-      address: "0xea2b9a899ef5000c23e95fc86d7be05ddce44db3",
+      address: "0x9433d3a583aa8469baf621151ca3c88eb9bb9eac",
       abi: [
         {
           type: "constructor",
@@ -723,6 +723,25 @@ const deployedContracts = {
               name: "",
               type: "bool",
               internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getAuctionEndTime",
+          inputs: [
+            {
+              name: "_auctionId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -1007,11 +1026,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750190397.json",
+      deploymentFile: "run-1750198566.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharFactory: {
-      address: "0xb4d674204c17feb68369d79569081efa7170e2c1",
+      address: "0xb34e3ebfcece54c6ed39acf237a20fcf4039e80b",
       abi: [
         {
           type: "constructor",
@@ -1197,11 +1216,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750190397.json",
+      deploymentFile: "run-1750198566.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharOwnershipCertificate: {
-      address: "0xbcc2488a5ecf7bc978350484659a4c87a3d20c67",
+      address: "0xb69286b2b6675ff675a43c5399af207776576fc6",
       abi: [
         {
           type: "constructor",
@@ -1645,11 +1664,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750190397.json",
+      deploymentFile: "run-1750198566.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockWETH: {
-      address: "0x224730b9bf364271d6a5ef82678098d16779cf2c",
+      address: "0x443cdc8ad8a62d994a0f26aa1185809a5d4b0be2",
       abi: [
         {
           type: "constructor",
@@ -2017,11 +2036,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750190397.json",
+      deploymentFile: "run-1750198566.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockUniswapV2Factory: {
-      address: "0x9f030d37d39ae06b5ecb1a889a7e56cea696aa87",
+      address: "0x119360e4d1b1f7efa1c39793baad769acc8271af",
       abi: [
         {
           type: "constructor",
@@ -2193,11 +2212,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750190397.json",
+      deploymentFile: "run-1750198566.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockUniswapV2Router02: {
-      address: "0xde10837655d3ec50f549dc0fa924b1dda7bba320",
+      address: "0xc36bb04497cfe25042fa8a6c5d49d1c636db45e9",
       abi: [
         {
           type: "constructor",
@@ -2327,7 +2346,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750190397.json",
+      deploymentFile: "run-1750198566.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
