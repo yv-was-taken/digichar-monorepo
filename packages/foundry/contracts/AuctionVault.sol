@@ -97,6 +97,7 @@ contract AuctionVault {
         public
         onlyProtcolAdmin
     {
+        if (block.timestamp < auctions[auctionId].endTime) revert AuctionStillOpen();
         Auction storage newAuction = auctions[auctionId];
         newAuction.endTime = block.timestamp + config.AUCTION_DURATION_TIME();
 

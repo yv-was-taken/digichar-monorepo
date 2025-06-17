@@ -21,6 +21,10 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
+    label: "Live Digichars",
+    href: "/live-digichars",
+  },
+  {
     label: "Past Auctions",
     href: "/past-auctions",
   },

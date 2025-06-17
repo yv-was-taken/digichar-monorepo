@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     Config: {
-      address: "0xf274193d60be04e543260d6b79e70b91f9bc1c95",
+      address: "0xbbd821d41c78368eb45d27ce21f938aa45aa301e",
       abi: [
         {
           type: "constructor",
@@ -543,11 +543,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750108716.json",
+      deploymentFile: "run-1750186621.json",
       deploymentScript: "Deploy.s.sol",
     },
     AuctionVault: {
-      address: "0x3a62289b0a30568be8c1f3b6ad7087a35a64d510",
+      address: "0xec6a079e25a9cbe81421af751ce8d9fa471c0593",
       abi: [
         {
           type: "constructor",
@@ -1007,11 +1007,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750108716.json",
+      deploymentFile: "run-1750186621.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharFactory: {
-      address: "0x4fda58459e9889d2763aab7af3b763dce3c4af7b",
+      address: "0xe2847c34be74650c7ae93fa9b11ed9406bcfb3ff",
       abi: [
         {
           type: "constructor",
@@ -1197,11 +1197,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750108716.json",
+      deploymentFile: "run-1750186621.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharOwnershipCertificate: {
-      address: "0x5eed550d0786cd6a1ccc3fff645e7297cc563e92",
+      address: "0x50f15260030275eb431f05d90ca08461a0264b52",
       abi: [
         {
           type: "constructor",
@@ -1645,11 +1645,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750108716.json",
+      deploymentFile: "run-1750186621.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockWETH: {
-      address: "0x11b2d352d4489663d33ae93ef6e9494961a9b492",
+      address: "0xb430251faddb1b2a83862e4adcdce27eb24dd861",
       abi: [
         {
           type: "constructor",
@@ -2017,7 +2017,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750108716.json",
+      deploymentFile: "run-1750186621.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
