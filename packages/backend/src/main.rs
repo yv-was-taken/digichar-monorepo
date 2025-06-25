@@ -14,27 +14,24 @@ const CONFIG_CONTRACT_ADDRESS: &str = "0x234567890123456789012345678901234567890
 const RPC_URL: &str = "https://rpc_url_placeholder.com";
 
 //abigen!(Config, "./abis/Config.json");
-
 //let config_contract = AuctionVault::new(Address::CONFIG_CONTRACT_ADDRESS.parse()?, client)
+//
+//
+
+struct Character {
+    name: String,
+    symbol: String,
+    description: String,
+    avatar: String,
+}
+
 fn main() {
     println!("Hello, world!");
 }
 
-//main protocol activity contract actions
+//core protocol activity contract writes
 
-async fn get_current_auction_closing_timestamp() -> Result<U256> {
-    abigen!(AuctionVault, "./abis/AuctionVault.json");
-    let provider = Provider::<Http>::try_from(RPC_URL)?;
-    let client = Arc::new(provider);
-    let auction_vault =
-        AuctionVault::new(AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?, client);
-    let current_auction_id: U256 = auction_vault.auction_id().call().await?;
-    let auction_closing_timestamp: U256 = auction_vault
-        .get_auction_end_time(current_auction_id)
-        .call()
-        .await?;
-    Ok(auction_closing_timestamp)
-}
+fn create_auction() {}
 
 async fn close_auction(top_bidder: Address, winning_character_index: u8) -> Result<()> {
     abigen!(AuctionVault, "./abis/AuctionVault.json");
@@ -49,7 +46,20 @@ async fn close_auction(top_bidder: Address, winning_character_index: u8) -> Resu
     Ok(())
 }
 
-fn create_auction() {}
+//core protocol activity contract reads
+async fn get_current_auction_closing_timestamp() -> Result<U256> {
+    abigen!(AuctionVault, "./abis/AuctionVault.json");
+    let provider = Provider::<Http>::try_from(RPC_URL)?;
+    let client = Arc::new(provider);
+    let auction_vault =
+        AuctionVault::new(AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?, client);
+    let current_auction_id: U256 = auction_vault.auction_id().call().await?;
+    let auction_closing_timestamp: U256 = auction_vault
+        .get_auction_end_time(current_auction_id)
+        .call()
+        .await?;
+    Ok(auction_closing_timestamp)
+}
 
 fn is_auction_closed() {}
 
@@ -61,25 +71,18 @@ async fn upload_character_to_ipfs() {}
 fn download_character_avatar() {}
 
 //config update contract actions
-fn set_weth() {}
-fn set_lp_lock_bps() {}
-fn set_swap_router() {}
-fn set_swap_factory() {}
-fn set_auction_vault() {}
-fn set_auction_duration() {}
-fn set_digichar_factory() {}
-fn update_protocol_admin() {}
-fn set_protocol_admin_tax_bps() {}
-fn set_character_owner_tax_bps() {}
-fn set_ownership_certificate() {}
+async fn set_weth() {}
+async fn set_lp_lock_bps() {}
+async fn set_swap_router() {}
+async fn set_swap_factory() {}
+async fn set_auction_vault() {}
+async fn set_auction_duration() {}
+async fn set_digichar_factory() {}
+async fn update_protocol_admin() {}
+async fn set_protocol_admin_tax_bps() {}
+async fn set_character_owner_tax_bps() {}
+async fn set_ownership_certificate() {}
 
 //@dev is this needed? or can we bulk upload in one ipfs call...
 // TBD :)
 fn upload_character_avatar_to_ipfs() {}
-
-struct Character {
-    name: String,
-    symbol: String,
-    description: String,
-    avatar: String,
-}

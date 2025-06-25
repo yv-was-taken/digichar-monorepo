@@ -114,6 +114,7 @@ dependencies = [
  "ethers",
  "eyre",
  "reqwest 0.12.20",
+ "tokio",
 ]
 
 [[package]]
