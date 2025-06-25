@@ -128,7 +128,7 @@ contract AuctionVault {
         emit BidPlaced(auctionId, msg.sender, msg.value, _characterIndex);
     }
 
-    function withdrawBid(uint256 _auctionId, uint8 _characterIndex, uint256 _amount) public {
+    function withdrawBid(uint256 _auctionId, uint8 _characterIndex, uint256 _amount) public noReentrant {
         if (_amount == 0) revert AmountZero();
         // @dev cannot withdraw bid from winning character bid pool as auction is complete by that point
         if (auctions[_auctionId].characters[_characterIndex].isWinner) revert InvalidCharacter();

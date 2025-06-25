@@ -33,8 +33,14 @@ contract Config {
     uint256 public constant BASIS_POINTS = 10_000;
 
     // Tax configuration
+
+    //@dev percentage of revenue on each swap that goes to the protocol
     uint256 public PROTOCOL_ADMIN_TAX_BPS = 100; // 1%
+
+    //@dev percentage of revenue on each swap that goes to the ownership certificate owner
     uint256 public CHARACTER_OWNER_TAX_BPS = 100; // 1%
+
+    //@dev percentage of each swap that gets locked into LP
     uint256 public LP_LOCK_BPS = 75; // 0.75%
     //@dev change to 24 hours (?) come prod.
     uint256 public AUCTION_DURATION_TIME = 24 hours;
