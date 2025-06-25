@@ -112,6 +112,7 @@ name = "backend"
 version = "0.1.0"
 dependencies = [
  "ethers",
+ "eyre",
  "reqwest 0.12.20",
 ]
 
