@@ -19,7 +19,6 @@ use tokio::io::AsyncWriteExt;
 const AUCTION_VAULT_CONTRACT_ADDRESS: &str = "0x2345678901234567890123456789012345678901";
 const CONFIG_CONTRACT_ADDRESS: &str = "0x2345678901234567890123456789012345678901";
 const RPC_URL: &str = "https://rpc_url_placeholder.com";
-const IPFS_API_URL: &str = "http://127.0.0.1:5001";
 
 //abigen!(Config, "./abis/Config.json");
 //let config_contract = AuctionVault::new(Address::CONFIG_CONTRACT_ADDRESS.parse()?, client)
@@ -43,7 +42,7 @@ fn main() {
 //@dev note: the 'characterURIs' input parameter in the contract level is expected to just be the
 // ipfs hash, i.e. https://ipfs.com/ipfs/{HASH_GOES_HERE}
 // may be worth refactoring on contract side in near future, but until then, this is what it should
-// be on backend level, just FYI
+// be on backend level
 fn create_auction() {}
 
 async fn close_auction(top_bidder: Address, winning_character_index: u8) -> Result<()> {
@@ -130,22 +129,22 @@ list off 3 characters from each different style from the following list of style
 
         if let Some(candidates) = response.get("candidates").and_then(|c| c.as_array()) {
             for candidate in candidates {
-                if let Some(content) = candidate.get("content").and_then(|c| c.get("parts")) {
-                    if let Some(text) = content[0].get("text").and_then(|t| t.as_str()) {
-                        let lines: Vec<&str> = text.lines().collect();
-                        for i in (0..lines.len()).step_by(5) {
-                            if i + 4 < lines.len() {
-                                let name = lines[i].replace("- name: ", "");
-                                let ticker = lines[i + 1].replace("- ticker: ", "");
-                                let description = lines[i + 2].replace("- description: ", "");
-                                let image = lines[i + 3].replace("- image: ", "");
-                                characters.push(Character {
-                                    name,
-                                    symbol: ticker,
-                                    description,
-                                    avatar: image,
-                                });
-                            }
+                if let Some(content) = candidate.get("content").and_then(|c| c.get("parts"))
+                    && let Some(text) = content[0].get("text").and_then(|t| t.as_str())
+                {
+                    let lines: Vec<&str> = text.lines().collect();
+                    for i in (0..lines.len()).step_by(5) {
+                        if i + 4 < lines.len() {
+                            let name = lines[i].replace("- name: ", "");
+                            let ticker = lines[i + 1].replace("- ticker: ", "");
+                            let description = lines[i + 2].replace("- description: ", "");
+                            let image = lines[i + 3].replace("- image: ", "");
+                            characters.push(Character {
+                                name,
+                                symbol: ticker,
+                                description,
+                                avatar: image,
+                            });
                         }
                     }
                 }
@@ -157,40 +156,65 @@ list off 3 characters from each different style from the following list of style
 }
 
 async fn upload_character_to_ipfs(character: &Character) -> Result<String> {
-    let client = Client::new();
-    let url = format!("{}/api/v0/add", IPFS_API_URL);
+    let pinata_jwt = env::var("PINATA_JWT").expect("PINATA_JWT must be set");
+    let url = "https://uploads.pinata.cloud/v3/files";
 
-    let character_json = serde_json::to_string(character)?;
+    // Read the avatar file
+    let avatar_file_name = match Path::new(&character.avatar)
+        .file_name()
+        .and_then(|n| n.to_str())
+    {
+        Some(file_name) => file_name,
+        None => {
+            return Err(eyre::eyre!(format!(
+                "image not found for character: {}",
+                &character.avatar
+            )));
+        }
+    };
+    let avatar_data = tokio::fs::read(&avatar_file_name).await?;
 
-    let boundary = "------------------------7d8f3e0e1b2a3c4";
-    let mut body = Vec::new();
-    body.extend_from_slice(b"--");
-    body.extend_from_slice(boundary.as_bytes());
-    body.extend_from_slice(b"\r\n");
-    body.extend_from_slice(b"Content-Disposition: form-data; name=\"file\"\r\n");
-    body.extend_from_slice(b"Content-Type: application/json\r\n\r\n");
-    body.extend_from_slice(character_json.as_bytes());
-    body.extend_from_slice(b"\r\n--");
-    body.extend_from_slice(boundary.as_bytes());
-    body.extend_from_slice(b"--\r\n");
+    // Prepare keyvalues
+    let keyvalues = json!({
+        "keyvalues": {
+            "name": &character.name,
+            "symbol": &character.symbol,
+            "description": &character.description
+        }
+    });
 
-    let req = Request::builder()
-        .method(Method::POST)
-        .uri(url)
-        .header(
-            "Content-Type",
-            format!("multipart/form-data; boundary={}", boundary),
-        )
-        .body(Body::from(body))?;
+    // Create multipart form
+    let avatar_for_character_upload = reqwest::multipart::Part::bytes(avatar_data)
+        .file_name(avatar_file_name.to_owned())
+        .mime_str("image/png")?;
 
-    let res = client.request(req).await?;
-    let body_bytes = hyper::body::to_bytes(res.into_body()).await?;
-    let response: serde_json::Value = serde_json::from_slice(&body_bytes)?;
+    let form = reqwest::multipart::Form::new()
+        .text("network", "public")
+        .part("file", avatar_for_character_upload)
+        .text("keyvalues", serde_json::to_string(&keyvalues)?);
 
-    if let Some(hash) = response.get("Hash").and_then(|h| h.as_str()) {
-        Ok(format!("ipfs://{}", hash))
+    // Send request
+    let client = reqwest::Client::new();
+    let res = client
+        .post(url)
+        .header("Authorization", format!("Bearer {pinata_jwt}"))
+        .multipart(form)
+        .send()
+        .await?;
+
+    let response: serde_json::Value = res.json().await?;
+
+    if let Some(data) = response.get("data") {
+        if let Some(cid) = data.get("cid").and_then(|c| c.as_str()) {
+            Ok(format!("ipfs://{cid}"))
+        } else {
+            Err(eyre::eyre!("Failed to get CID from response"))
+        }
     } else {
-        Err(eyre::eyre!("Failed to get IPFS hash from response"))
+        Err(eyre::eyre!(
+            "Failed to parse Pinata response: {:?}",
+            response
+        ))
     }
 }
 
