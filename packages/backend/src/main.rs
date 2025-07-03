@@ -182,12 +182,15 @@ list off 3 characters from each different style from the following list of style
                             let name = lines[i].replace("- name: ", "");
                             let ticker = lines[i + 1].replace("- ticker: ", "");
                             let description = lines[i + 2].replace("- description: ", "");
+                            //@dev is the following doing as intended?
+                            // ... we should be *downloading* the file then pointing to the file
+                            // name here...
                             let image = lines[i + 3].replace("- image: ", "");
                             characters.push(Character {
                                 name,
                                 symbol: ticker,
                                 description,
-                                avatar: image,
+                                avatar_file_name: image,
                             });
                         }
                     }
@@ -267,12 +270,12 @@ async fn download_character_avatar(character: &Character) -> Result<()> {
     let client = Client::builder().build::<_, Body>(https);
     let req = Request::builder()
         .method(Method::GET)
-        .uri(&character.avatar)
+        .uri(&character.avatar_file_name)
         .body(Body::empty())?;
     let res = client.request(req).await?;
     let body_bytes = hyper::body::to_bytes(res.into_body()).await?;
 
-    let file_extension = Path::new(&character.avatar)
+    let file_extension = Path::new(&character.avatar_file_name)
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("png");
