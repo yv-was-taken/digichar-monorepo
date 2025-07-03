@@ -15,6 +15,7 @@ use std::env;
 use std::path::Path;
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
+use tokio::time::{Duration, sleep};
 
 const AUCTION_VAULT_CONTRACT_ADDRESS: &str = "0x2345678901234567890123456789012345678901";
 const CONFIG_CONTRACT_ADDRESS: &str = "0x2345678901234567890123456789012345678901";
@@ -33,8 +34,55 @@ struct Character {
     avatar_file_name: String,
 }
 
-fn main() {
-    println!("Hello, world!");
+#[tokio::main]
+async fn main() {
+    loop {
+        match run_protocol_loop().await {
+            Ok(_) => (),
+            Err(e) => {
+                eprintln!("Error in protocol loop: {e}");
+                println!("Waiting 60 seconds before retrying...");
+                sleep(Duration::from_secs(60)).await;
+            }
+        }
+    }
+}
+
+async fn run_protocol_loop() -> Result<()> {
+    loop {
+        let current_auction_closing_timestamp = get_current_auction_closing_timestamp().await?;
+        let current_timestamp = U256::from(chrono::Utc::now().timestamp());
+
+        let current_auction_id = get_current_auction_id().await?;
+        let mut is_current_auction_open = is_auction_open(current_auction_id).await?;
+
+        while is_current_auction_open {
+            let mut interval_until_auction_close = tokio::time::interval(Duration::from_secs(
+                (current_timestamp - current_auction_closing_timestamp).as_u64(),
+            ));
+            interval_until_auction_close.tick().await;
+
+            //@claude note, we need to fetch top_bidder (and determine top bidding pool) from offchain
+            //indexing, question is how to do it?
+            // subgraph, or something else?
+            let top_bidder = "0x2345678901234567890123456789012345678901"; //placeholder
+            let winning_character_index: u8 = 0; //placeholder
+            close_auction(top_bidder.parse().unwrap(), winning_character_index).await?;
+            is_current_auction_open = is_auction_open(current_auction_id).await?;
+
+            let characters = create_characters().await?;
+
+            let character_uris: [String; 3] =
+                futures::future::join_all(characters.iter().map(upload_character_to_ipfs))
+                    .await
+                    .into_iter()
+                    .collect::<Result<Vec<String>>>()?
+                    .try_into()
+                    .unwrap();
+
+            create_auction(characters, character_uris).await?;
+        }
+    }
 }
 
 //core protocol activity contract writes
@@ -101,6 +149,16 @@ async fn close_auction(top_bidder: Address, winning_character_index: u8) -> Resu
     Ok(())
 }
 
+async fn get_current_auction_id() -> Result<U256> {
+    abigen!(AuctionVault, "./abis/AuctionVault.json");
+    let provider = Provider::<Http>::try_from(RPC_URL)?;
+    let client = Arc::new(provider);
+    let auction_vault =
+        AuctionVault::new(AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?, client);
+    let current_auction_id: U256 = auction_vault.auction_id().call().await?;
+    Ok(current_auction_id)
+}
+
 //core protocol activity contract reads
 async fn get_current_auction_closing_timestamp() -> Result<U256> {
     //@TODO extract `auction_vault`, `provider`, `client` upstream
@@ -118,19 +176,28 @@ async fn get_current_auction_closing_timestamp() -> Result<U256> {
 }
 
 async fn is_current_auction_expired() -> Result<bool> {
+    let current_auction_ending_timestamp: U256 = get_current_auction_closing_timestamp().await?;
+    let current_timestamp = U256::from(chrono::Utc::now().timestamp());
+    if current_timestamp > current_auction_ending_timestamp {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+async fn is_auction_open(auction_id: U256) -> Result<bool> {
     //@TODO extract `auction_vault`, `provider`, `client` upstream
     abigen!(AuctionVault, "./abis/AuctionVault.json");
     let provider = Provider::<Http>::try_from(RPC_URL)?;
     let client = Arc::new(provider);
     let auction_vault =
         AuctionVault::new(AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?, client);
-    let current_auction_ending_timestamp: U256 =
-        auction_vault.get_current_auction_end_time().call().await?;
-    let current_timestamp = U256::from(chrono::Utc::now().timestamp());
-    if current_timestamp > current_auction_ending_timestamp {
-        Ok(true)
-    } else {
-        Ok(false)
+    match auction_vault.is_auction_open(auction_id).call().await {
+        Ok(result) => Ok(result),
+        Err(err) => Err(eyre::eyre!(format!(
+            "failed reading contract while calling `is_auction_open` with err {}",
+            err
+        ))),
     }
 }
 

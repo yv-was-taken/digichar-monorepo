@@ -123,6 +123,7 @@ dependencies = [
  "chrono",
  "ethers",
  "eyre",
+ "futures",
  "headers",
  "http 1.3.1",
  "http-body-util",

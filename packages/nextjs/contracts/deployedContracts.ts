@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     Config: {
-      address: "0x7c5ad66a01100be69c9a09924d6e43c0fe232541",
+      address: "0x700b6a60ce7eaaea56f065753d8dcb9653dbad35",
       abi: [
         {
           type: "constructor",
@@ -543,11 +543,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750709195.json",
+      deploymentFile: "run-1751584373.json",
       deploymentScript: "Deploy.s.sol",
     },
     AuctionVault: {
-      address: "0x4c0b3ef7cd8fc16ade50658752cd398eb43d2910",
+      address: "0xa15bb66138824a1c7167f5e85b957d04dd34e468",
       abi: [
         {
           type: "constructor",
@@ -589,6 +589,11 @@ const deployedContracts = {
               type: "uint256",
               internalType: "uint256",
             },
+            {
+              name: "isClosed",
+              type: "bool",
+              internalType: "bool",
+            },
           ],
           stateMutability: "view",
         },
@@ -604,6 +609,25 @@ const deployedContracts = {
           ],
           outputs: [],
           stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "characterTokensByAuctionId",
+          inputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -833,6 +857,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "isAuctionOpen",
+          inputs: [
+            {
+              name: "_auctionId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "userBidBalance",
           inputs: [
             {
@@ -1026,11 +1069,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750709195.json",
+      deploymentFile: "run-1751584373.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharFactory: {
-      address: "0x96e73cfbda85aa49d18fc6f0482a38ec7bb6751f",
+      address: "0xb19b36b1456e65e3a6d514d3f715f204bd59f431",
       abi: [
         {
           type: "constructor",
@@ -1216,11 +1259,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750709195.json",
+      deploymentFile: "run-1751584373.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharOwnershipCertificate: {
-      address: "0xb5f0990fe2fc21be6d8b95241b780218d9002959",
+      address: "0x8ce361602b935680e8dec218b820ff5056beb7af",
       abi: [
         {
           type: "constructor",
@@ -1664,11 +1707,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750709195.json",
+      deploymentFile: "run-1751584373.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockWETH: {
-      address: "0x9c6f1dbe228880f99aa24618c30187f6c34cc5b9",
+      address: "0xe1aa25618fa0c7a1cfdab5d6b456af611873b629",
       abi: [
         {
           type: "constructor",
@@ -2036,11 +2079,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750709195.json",
+      deploymentFile: "run-1751584373.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockUniswapV2Factory: {
-      address: "0x0b9144884406a7c7382ad99d17aa5667bfd9ef74",
+      address: "0xe1da8919f262ee86f9be05059c9280142cf23f48",
       abi: [
         {
           type: "constructor",
@@ -2212,11 +2255,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750709195.json",
+      deploymentFile: "run-1751584373.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockUniswapV2Router02: {
-      address: "0x42a14da7655c008926cfd64ef6b7a589f2144bc2",
+      address: "0x0c8e79f3534b00d9a3d4a856b665bf4ebc22f2ba",
       abi: [
         {
           type: "constructor",
@@ -2346,7 +2389,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1750709195.json",
+      deploymentFile: "run-1751584373.json",
       deploymentScript: "Deploy.s.sol",
     },
   },

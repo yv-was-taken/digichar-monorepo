@@ -75,6 +75,7 @@ contract AuctionVault {
     struct Auction {
         Character[3] characters;
         uint256 endTime;
+        bool isClosed;
     }
 
     function getAuctionCharacterData(uint256 _auctionId, uint256 _characterIndex)
@@ -92,9 +93,8 @@ contract AuctionVault {
         return auctions[auctionId].endTime;
     }
 
-    function getAuctionEndTime(uint _auctionId) public view returns (uint256) {
-      return auctions[_auctionId].endTime;
-
+    function getAuctionEndTime(uint256 _auctionId) public view returns (uint256) {
+        return auctions[_auctionId].endTime;
     }
 
     //contract core
@@ -144,6 +144,10 @@ contract AuctionVault {
         emit BidWithdrawn(auctionId, msg.sender, _amount);
     }
 
+    function isAuctionOpen(uint256 _auctionId) external view returns (bool) {
+        return !auctions[_auctionId].isClosed;
+    }
+
     //this function needs to do a few different things:
 
     //@dev this should be able to be handled by calling digicharFactory...
@@ -158,6 +162,9 @@ contract AuctionVault {
 
     function closeCurrentAuction(address _topBidder, uint8 _winningCharacterIndex) public onlyProtcolAdmin {
         if (block.timestamp < auctions[auctionId].endTime) revert AuctionStillOpen();
+
+        auctions[auctionId].isClosed = true;
+
         auctions[auctionId].characters[_winningCharacterIndex].isWinner = true;
         winningCharacterIndexesForEachAuction[auctionId] = _winningCharacterIndex;
 
