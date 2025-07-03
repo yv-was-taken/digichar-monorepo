@@ -42,7 +42,7 @@ contract AuctionVault {
     //mappings
     mapping(uint256 => Auction) public auctions;
     mapping(address => mapping(uint256 => mapping(uint8 => uint256))) public userBidBalance;
-    mapping(uint256 => address) characterTokensByAuctionId;
+    mapping(uint256 => address) public characterTokensByAuctionId;
     mapping(address => mapping(uint256 => bool)) hasUserClaimedTokens;
 
     //@dev not sure if this is needed, but it does create easier Ux for external user-interactions on checking for unclaimed tokens etc.
@@ -91,6 +91,7 @@ contract AuctionVault {
     function getCurrentAuctionEndTime() public view returns (uint256) {
         return auctions[auctionId].endTime;
     }
+
     function getAuctionEndTime(uint _auctionId) public view returns (uint256) {
       return auctions[_auctionId].endTime;
 

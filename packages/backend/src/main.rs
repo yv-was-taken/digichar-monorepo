@@ -117,7 +117,22 @@ async fn get_current_auction_closing_timestamp() -> Result<U256> {
     Ok(auction_closing_timestamp)
 }
 
-fn is_auction_closed() {}
+async fn is_current_auction_expired() -> Result<bool> {
+    //@TODO extract `auction_vault`, `provider`, `client` upstream
+    abigen!(AuctionVault, "./abis/AuctionVault.json");
+    let provider = Provider::<Http>::try_from(RPC_URL)?;
+    let client = Arc::new(provider);
+    let auction_vault =
+        AuctionVault::new(AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?, client);
+    let current_auction_ending_timestamp: U256 =
+        auction_vault.get_current_auction_end_time().call().await?;
+    let current_timestamp = U256::from(chrono::Utc::now().timestamp());
+    if current_timestamp > current_auction_ending_timestamp {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
 
 //LLM calling fns for character metadata creation
 async fn create_characters() -> Result<Vec<Character>> {
