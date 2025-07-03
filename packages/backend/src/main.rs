@@ -30,7 +30,7 @@ struct Character {
     name: String,
     symbol: String,
     description: String,
-    avatar: String,
+    avatar_file_name: String,
 }
 
 fn main() {
@@ -43,9 +43,52 @@ fn main() {
 // ipfs hash, i.e. https://ipfs.com/ipfs/{HASH_GOES_HERE}
 // may be worth refactoring on contract side in near future, but until then, this is what it should
 // be on backend level
-fn create_auction() {}
+async fn create_auction(characters: Vec<Character>, character_uris: [String; 3]) -> Result<()> {
+    //@dev commenting out this logic for now to be reused for when generating `character_uris` to
+    //be passed as input parameter for this fn...
+    //let character_uris: [String; 3] = characters
+    //    .iter()
+    //    .map(|character| match &character.ipfs_uri {
+    //        Some(uri) => uri,
+    //        None => {
+    //            return Err(eyre::eyre!(format!(
+    //                "character IPFS URI not found for character: {}",
+    //                &character.name
+    //            )));
+    //        }
+    //    })
+    //    .collect::<Vec<String>>()
+    //    .try_into()
+    //    .unwrap();
+
+    let names: [String; 3] = characters
+        .iter()
+        .map(|character| character.name.clone())
+        .collect::<Vec<String>>()
+        .try_into()
+        .unwrap();
+    let symbols: [String; 3] = characters
+        .iter()
+        .map(|character| character.symbol.clone())
+        .collect::<Vec<String>>()
+        .try_into()
+        .unwrap();
+
+    //@TODO extract `auction_vault`, `provider`, `client` upstream
+    abigen!(AuctionVault, "./abis/AuctionVault.json");
+    let provider = Provider::<Http>::try_from(RPC_URL)?;
+    let client = Arc::new(provider);
+    let auction_vault =
+        AuctionVault::new(AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?, client);
+    auction_vault
+        .create_auction(character_uris, names, symbols)
+        .call()
+        .await?;
+    Ok(())
+}
 
 async fn close_auction(top_bidder: Address, winning_character_index: u8) -> Result<()> {
+    //@TODO extract `auction_vault`, `provider`, `client` upstream
     abigen!(AuctionVault, "./abis/AuctionVault.json");
     let provider = Provider::<Http>::try_from(RPC_URL)?;
     let client = Arc::new(provider);
@@ -60,6 +103,7 @@ async fn close_auction(top_bidder: Address, winning_character_index: u8) -> Resu
 
 //core protocol activity contract reads
 async fn get_current_auction_closing_timestamp() -> Result<U256> {
+    //@TODO extract `auction_vault`, `provider`, `client` upstream
     abigen!(AuctionVault, "./abis/AuctionVault.json");
     let provider = Provider::<Http>::try_from(RPC_URL)?;
     let client = Arc::new(provider);
@@ -160,7 +204,7 @@ async fn upload_character_to_ipfs(character: &Character) -> Result<String> {
     let url = "https://uploads.pinata.cloud/v3/files";
 
     // Read the avatar file
-    let avatar_file_name = match Path::new(&character.avatar)
+    let avatar_file_name = match Path::new(&character.avatar_file_name)
         .file_name()
         .and_then(|n| n.to_str())
     {
@@ -168,7 +212,7 @@ async fn upload_character_to_ipfs(character: &Character) -> Result<String> {
         None => {
             return Err(eyre::eyre!(format!(
                 "image not found for character: {}",
-                &character.avatar
+                &character.avatar_file_name
             )));
         }
     };
