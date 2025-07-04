@@ -10,6 +10,7 @@ It's a yarn monorepo that contains following packages:
 
 - FOUNDRY (`packages/foundry`): The solidity framework to write, test and deploy EVM Smart Contracts.
 - NextJS (`packages/nextjs`): The UI framework extended with utilities to make interacting with Smart Contracts easy (using Next.js App Router, not Pages Router).
+- BACKEND (`packages/backend`): A Rust-based backend service that manages auction protocols, analyzes blockchain events, and handles character creation/IPFS uploads for the DigiChar ecosystem.
 
 
 The usual dev flow is:
@@ -79,3 +80,29 @@ They live under `packages/nextjs/components/scaffold-eth`.
 Find the relevant information from the documentation and the codebase. Think step by step before answering the question.
 
 - Just do `git add .` when committing changes
+
+## Backend Package (Rust)
+The backend package (`packages/backend`) is a Rust-based service that handles blockchain interactions and auction management:
+
+### Key Components:
+- **Main Protocol Loop**: Continuously monitors and manages auction cycles
+- **Auction Analyzer**: Analyzes blockchain events to determine auction winners based on bid data
+- **Character Management**: Creates and uploads character metadata to IPFS
+- **Smart Contract Integration**: Uses ethers-rs to interact with AuctionVault and Config contracts
+
+### Tech Stack:
+- **Language**: Rust (edition 2024)
+- **Blockchain**: ethers-rs for Ethereum interactions
+- **Async Runtime**: Tokio
+- **HTTP/IPFS**: Hyper + reqwest for API calls
+- **Serialization**: Serde for JSON handling
+
+### Key Files:
+- `src/main.rs`: Main entry point with protocol loop, auction management, and IPFS integration
+- `src/auction_analyzer.rs`: Analyzes bid events and calculates auction winners
+- `abis/`: Contains ABI JSON files for smart contract interfaces
+
+### Development:
+- Build: `cargo build`
+- Run: `cargo run`
+- The service runs in a continuous loop, managing auction lifecycles and character creation

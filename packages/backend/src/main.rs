@@ -17,6 +17,9 @@ use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use tokio::time::{Duration, sleep};
 
+mod auction_analyzer;
+use auction_analyzer::AuctionAnalyzer;
+
 const AUCTION_VAULT_CONTRACT_ADDRESS: &str = "0x2345678901234567890123456789012345678901";
 const CONFIG_CONTRACT_ADDRESS: &str = "0x2345678901234567890123456789012345678901";
 const RPC_URL: &str = "https://rpc_url_placeholder.com";
@@ -62,12 +65,19 @@ async fn run_protocol_loop() -> Result<()> {
             ));
             interval_until_auction_close.tick().await;
 
-            //@claude note, we need to fetch top_bidder (and determine top bidding pool) from offchain
-            //indexing, question is how to do it?
-            // subgraph, or something else?
-            let top_bidder = "0x2345678901234567890123456789012345678901"; //placeholder
-            let winning_character_index: u8 = 0; //placeholder
-            close_auction(top_bidder.parse().unwrap(), winning_character_index).await?;
+            // Analyze the auction to determine the winner
+            let provider = Provider::<Http>::try_from(RPC_URL)?;
+            let client = Arc::new(provider);
+            let analyzer = AuctionAnalyzer::new(
+                client.clone(),
+                AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?
+            );
+            
+            let (top_bidder, winning_character_index) = analyzer
+                .get_auction_winner(current_auction_id.as_u64())
+                .await?;
+            
+            close_auction(top_bidder, winning_character_index).await?;
             is_current_auction_open = is_auction_open(current_auction_id).await?;
 
             let characters = create_characters().await?;
