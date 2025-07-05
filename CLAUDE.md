@@ -110,3 +110,6 @@ The backend package (`packages/backend`) is a Rust-based service that handles bl
 
 ### Development Best Practices:
 - Run `cargo check` after making changes in packages/backend to ensure all errors are corrected and the rust compiler is happy
+
+## Development Memories
+- Make sure you're in root directory for the project when adding files for commits
