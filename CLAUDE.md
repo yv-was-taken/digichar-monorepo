@@ -17,15 +17,16 @@ The usual dev flow is:
 
 - Start SE-2 locally:
   - `yarn chain`: Starts a local blockchain network
-  - `yarn deploy`: Deploys SE-2 default contract
+  - `yarn deploy`: Deploys SE-2 default contracts and automatically updates backend config
   - `yarn start`: Starts the frontend
+  - `yarn backend`: Starts the Rust backend service
 - Write a Smart Contract (modify the deployment script in `packages/foundry/script` if needed)
-- Deploy it locally (`yarn deploy`)
-- Go to the `http://locahost:3000/debug` page to interact with your contract with a nice UI
+- Deploy it locally (`yarn deploy`) - this automatically updates both frontend and backend configs
+- Go to the `http://localhost:3000/debug` page to interact with your contract with a nice UI
 - Iterate until you get the functionality you want in your contract
 - Write tests for the contract in `packages/foundry/test`
 - Create your custom UI using all the SE-2 components, hooks, and utilities.
-- Deploy your Smart Contrac to a live network
+- Deploy your Smart Contract to a live network
 - Deploy your UI (`yarn vercel` or `yarn ipfs`)
   - You can tweak which network the frontend is pointing (and some other configurations) in `scaffold.config.ts`
 
