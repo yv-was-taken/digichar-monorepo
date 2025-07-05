@@ -52,26 +52,14 @@ impl AuctionVaultService {
 
     pub async fn create_auction(
         &self,
-        characters: Vec<Character>,
         character_uris: [String; 3],
+        character_names: [String; 3],
+        character_symbols: [String; 3],
     ) -> Result<()> {
-        let names: [String; 3] = characters
-            .iter()
-            .map(|character| character.name.clone())
-            .collect::<Vec<String>>()
-            .try_into()
-            .unwrap();
-        let symbols: [String; 3] = characters
-            .iter()
-            .map(|character| character.symbol.clone())
-            .collect::<Vec<String>>()
-            .try_into()
-            .unwrap();
-
         abigen!(AuctionVault, "./abis/AuctionVault.json");
         let auction_vault = AuctionVault::new(self.auction_vault_address, self.provider.clone());
         auction_vault
-            .create_auction(character_uris, names, symbols)
+            .create_auction(character_uris, character_names, character_symbols)
             .call()
             .await?;
         Ok(())
@@ -259,4 +247,3 @@ impl AuctionVaultService {
         self.analyze_auction(auction_id, None, None).await
     }
 }
-

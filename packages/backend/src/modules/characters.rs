@@ -46,7 +46,7 @@ list off 3 characters from each different style from the following list of style
         let https = HttpsConnector::new();
         let client = Client::builder().build::<_, Body>(https);
 
-        for _ in 0..15 {
+        for idx in 0..15 {
             let req = Request::builder()
                 .method(Method::POST)
                 .uri(url)
@@ -78,12 +78,20 @@ list off 3 characters from each different style from the following list of style
                                 let name = lines[i].replace("- name: ", "");
                                 let ticker = lines[i + 1].replace("- ticker: ", "");
                                 let description = lines[i + 2].replace("- description: ", "");
-                                let image = lines[i + 3].replace("- image: ", "");
+                                let image_url = lines[i + 3].replace("- image: ", "");
+                                
+                                // Create unique filename based on character name and ticker
+                                let sanitized_name = name.replace(" ", "_").replace("/", "_").replace(":", "_");
+                                let avatar_file_name = format!("{}_{}_{}.png", sanitized_name, ticker, idx);
+                                
+                                // Download the avatar image
+                                self.download_character_avatar(&image_url, &avatar_file_name).await?;
+                                
                                 characters.push(Character {
                                     name,
                                     symbol: ticker,
                                     description,
-                                    avatar_file_name: image,
+                                    avatar_file_name,
                                 });
                             }
                         }
@@ -99,20 +107,9 @@ list off 3 characters from each different style from the following list of style
         let pinata_jwt = env::var("PINATA_JWT").expect("PINATA_JWT must be set");
         let url = "https://uploads.pinata.cloud/v3/files";
 
-        // Read the avatar file
-        let avatar_file_name = match Path::new(&character.avatar_file_name)
-            .file_name()
-            .and_then(|n| n.to_str())
-        {
-            Some(file_name) => file_name,
-            None => {
-                return Err(eyre::eyre!(format!(
-                    "image not found for character: {}",
-                    &character.avatar_file_name
-                )));
-            }
-        };
-        let avatar_data = tokio::fs::read(&avatar_file_name).await?;
+        // Read the avatar file from assets directory
+        let avatar_path = Path::new("assets").join(&character.avatar_file_name);
+        let avatar_data = tokio::fs::read(&avatar_path).await?;
 
         // Prepare keyvalues
         let keyvalues = json!({
@@ -125,7 +122,7 @@ list off 3 characters from each different style from the following list of style
 
         // Create multipart form
         let avatar_for_character_upload = reqwest::multipart::Part::bytes(avatar_data)
-            .file_name(avatar_file_name.to_owned())
+            .file_name(character.avatar_file_name.clone())
             .mime_str("image/png")?;
 
         let form = reqwest::multipart::Form::new()
@@ -158,24 +155,18 @@ list off 3 characters from each different style from the following list of style
         }
     }
 
-    pub async fn download_character_avatar(&self, character: &Character) -> Result<()> {
+    pub async fn download_character_avatar(&self, image_url: &str, file_name: &str) -> Result<()> {
         let https = HttpsConnector::new();
         let client = Client::builder().build::<_, Body>(https);
         let req = Request::builder()
             .method(Method::GET)
-            .uri(&character.avatar_file_name)
+            .uri(image_url)
             .body(Body::empty())?;
         let res = client.request(req).await?;
         let body_bytes = hyper::body::to_bytes(res.into_body()).await?;
 
-        let file_extension = Path::new(&character.avatar_file_name)
-            .extension()
-            .and_then(|s| s.to_str())
-            .unwrap_or("png");
-        let file_name = format!("{}.{}", character.name, file_extension);
-
-        fs::create_dir_all("images").await?;
-        let path = Path::new("images").join(file_name);
+        fs::create_dir_all("assets").await?;
+        let path = Path::new("assets").join(file_name);
         let mut file = File::create(&path).await?;
         file.write_all(&body_bytes).await?;
 

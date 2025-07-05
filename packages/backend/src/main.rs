@@ -1,5 +1,5 @@
-use eyre::Result;
 use ethers::types::U256;
+use eyre::Result;
 use tokio::time::{Duration, sleep};
 
 mod modules;
@@ -26,11 +26,14 @@ async fn run_protocol_loop() -> Result<()> {
     let character_service = CharacterService::new();
 
     loop {
-        let current_auction_closing_timestamp = auction_service.get_current_auction_closing_timestamp().await?;
+        let current_auction_closing_timestamp = auction_service
+            .get_current_auction_closing_timestamp()
+            .await?;
         let current_timestamp = U256::from(chrono::Utc::now().timestamp());
 
         let current_auction_id = auction_service.get_current_auction_id().await?;
-        let mut is_current_auction_open = auction_service.is_auction_open(current_auction_id).await?;
+        let mut is_current_auction_open =
+            auction_service.is_auction_open(current_auction_id).await?;
 
         while is_current_auction_open {
             let mut interval_until_auction_close = tokio::time::interval(Duration::from_secs(
@@ -42,21 +45,42 @@ async fn run_protocol_loop() -> Result<()> {
             let (top_bidder, winning_character_index) = auction_service
                 .get_auction_winner(current_auction_id.as_u64())
                 .await?;
-            
-            auction_service.close_auction(top_bidder, winning_character_index).await?;
+
+            auction_service
+                .close_auction(top_bidder, winning_character_index)
+                .await?;
             is_current_auction_open = auction_service.is_auction_open(current_auction_id).await?;
 
             let characters = character_service.create_characters().await?;
 
-            let character_uris: [String; 3] =
-                futures::future::join_all(characters.iter().map(|c| character_service.upload_character_to_ipfs(c)))
-                    .await
-                    .into_iter()
-                    .collect::<Result<Vec<String>>>()?
-                    .try_into()
-                    .unwrap();
+            let character_uris: [String; 3] = futures::future::join_all(
+                characters
+                    .iter()
+                    .map(|c| character_service.upload_character_to_ipfs(c)),
+            )
+            .await
+            .into_iter()
+            .collect::<Result<Vec<String>>>()?
+            .try_into()
+            .unwrap();
 
-            auction_service.create_auction(characters, character_uris).await?;
+            let character_names: [String; 3] = characters
+                .iter()
+                .map(|character| character.name.clone())
+                .collect::<Vec<String>>()
+                .try_into()
+                .unwrap();
+            let character_symbols: [String; 3] = characters
+                .iter()
+                .map(|character| character.symbol.clone())
+                .collect::<Vec<String>>()
+                .try_into()
+                .unwrap();
+
+            auction_service
+                .create_auction(character_uris, character_names, character_symbols)
+                .await?;
         }
     }
 }
+

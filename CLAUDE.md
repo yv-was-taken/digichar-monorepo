@@ -106,3 +106,6 @@ The backend package (`packages/backend`) is a Rust-based service that handles bl
 - Build: `cargo build`
 - Run: `cargo run`
 - The service runs in a continuous loop, managing auction lifecycles and character creation
+
+### Development Best Practices:
+- Run `cargo check` after making changes in packages/backend to ensure all errors are corrected and the rust compiler is happy
