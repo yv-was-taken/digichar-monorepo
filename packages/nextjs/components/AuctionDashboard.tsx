@@ -201,10 +201,11 @@ export const AuctionDashboard: React.FC = () => {
   // Loading state
   if (currentAuctionId === undefined || currentAuctionEndTime === undefined || !auctionDuration) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="text-2xl font-bold text-red-500">Loading Auction Data...</div>
-          <div className="text-gray-400">Fetching current auction information</div>
+      <div className="min-h-screen text-base-content flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="shimmer-green w-16 h-16 rounded-full mx-auto"></div>
+          <div className="text-2xl font-bold text-gradient-green">Loading Auction Data...</div>
+          <div className="text-base-content/70">Fetching current auction information</div>
         </div>
       </div>
     );
@@ -213,40 +214,40 @@ export const AuctionDashboard: React.FC = () => {
   // No active auction state - show only past auction data
   if (!isAuctionActive && hasPreviousCharacterData) {
     return (
-      <div className="min-h-screen bg-black text-white p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <div className="min-h-screen text-base-content">
+        <div className="max-w-7xl mx-auto space-y-12">
           {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-5xl font-bold text-red-500">DIGICHAR AUCTIONS</h1>
-            <p className="text-xl text-gray-400">Bid on unique digital characters and claim their tokens</p>
+          <div className="text-center space-y-6">
+            <h1 className="text-5xl font-bold text-gradient-green">DIGICHAR AUCTIONS</h1>
+            <p className="text-xl text-base-content/70">Bid on unique digital characters and claim their tokens</p>
           </div>
 
           {/* No Active Auction Notice */}
-          <Card className="border-yellow-600 bg-yellow-900/20">
+          <Card className="border-warning bg-warning/10">
             <CardHeader>
-              <CardTitle className="text-center text-2xl font-bold text-yellow-500">
+              <CardTitle className="text-center text-2xl font-bold text-warning">
                 🎯 Past Auction Closed - New Auction Opening Soon!
               </CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              <p className="text-lg text-yellow-200">
+              <p className="text-lg text-warning/80">
                 The previous auction has ended. A new auction will be starting soon with fresh characters!
               </p>
-              <p className="text-yellow-300">
+              <p className="text-warning/70">
                 Check back shortly or follow our updates for the next auction announcement.
               </p>
             </CardContent>
           </Card>
 
           {/* Past Auction Results */}
-          <Card className="border-gray-600">
+          <Card className="border-base-300">
             <CardHeader>
-              <CardTitle className="text-center text-2xl font-bold text-gray-300">
+              <CardTitle className="text-center text-2xl font-bold text-base-content/80">
                 Previous Auction Results - Auction #{previousAuctionId?.toString()}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="text-center text-gray-400 mb-6">
+              <div className="text-center text-base-content/60 mb-6">
                 <p>🏆 Final results from the completed auction</p>
               </div>
 
@@ -271,11 +272,11 @@ export const AuctionDashboard: React.FC = () => {
 
           {/* Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-green-600">
+            <Card className="border-success bg-success/5">
               <CardHeader>
-                <CardTitle className="text-green-500">How it Works</CardTitle>
+                <CardTitle className="text-success">How it Works</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-gray-300">
+              <CardContent className="space-y-3 text-base-content/80">
                 <p>• Place bids on your favorite characters using ETH</p>
                 <p>• The character with the highest total bid pool wins</p>
                 <p>• Winning bidders receive character tokens proportional to their contribution</p>
@@ -283,11 +284,11 @@ export const AuctionDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-red-600">
+            <Card className="border-primary bg-primary/5">
               <CardHeader>
-                <CardTitle className="text-red-500">Token Economics</CardTitle>
+                <CardTitle className="text-primary">Token Economics</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-gray-300">
+              <CardContent className="space-y-3 text-base-content/80">
                 <p>• Each character has 1,000,000 total tokens</p>
                 <p>• 50% locked in liquidity pool for trading</p>
                 <p>• 50% distributed to auction winners</p>
@@ -301,26 +302,26 @@ export const AuctionDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen text-base-content">
+      <div className="max-w-7xl mx-auto space-y-12">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold text-red-500">DIGICHAR AUCTIONS</h1>
-          <p className="text-xl text-gray-400">Bid on unique digital characters and claim their tokens</p>
+        <div className="text-center space-y-6">
+          <h1 className="text-5xl font-bold text-gradient-green">DIGICHAR AUCTIONS</h1>
+          <p className="text-xl text-base-content/70">Bid on unique digital characters and claim their tokens</p>
         </div>
 
         {/* Active Auction Section */}
-        <Card className="border-red-600">
+        <Card className="border-primary bg-primary/5">
           <CardHeader>
-            <CardTitle className="text-center text-2xl font-bold text-white">
+            <CardTitle className="text-center text-2xl font-bold text-primary">
               🔥 Live Auction #{currentAuctionId?.toString() || "0"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {!hasCurrentCharacterData ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
-                <p className="text-gray-400">Loading auction data...</p>
+                <div className="shimmer-green w-12 h-12 rounded-full"></div>
+                <p className="text-base-content/70">Loading auction data...</p>
               </div>
             ) : (
               <>
@@ -365,14 +366,14 @@ export const AuctionDashboard: React.FC = () => {
 
         {/* Previous Auction Section - Only show if there's previous auction data */}
         {hasPreviousAuction && hasPreviousCharacterData && (
-          <Card className="border-gray-600">
+          <Card className="border-base-300">
             <CardHeader>
-              <CardTitle className="text-center text-2xl font-bold text-gray-300">
+              <CardTitle className="text-center text-2xl font-bold text-base-content/80">
                 Previous Auction Results - Auction #{previousAuctionId?.toString()}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="text-center text-gray-400 mb-6">
+              <div className="text-center text-base-content/60 mb-6">
                 <p>🏆 Final results from the completed auction</p>
               </div>
 
@@ -398,11 +399,11 @@ export const AuctionDashboard: React.FC = () => {
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="border-green-600">
+          <Card className="border-success bg-success/5">
             <CardHeader>
-              <CardTitle className="text-green-500">How it Works</CardTitle>
+              <CardTitle className="text-success">How it Works</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-gray-300">
+            <CardContent className="space-y-3 text-base-content/80">
               <p>• Place bids on your favorite characters using ETH</p>
               <p>• The character with the highest total bid pool wins</p>
               <p>• Winning bidders receive character tokens proportional to their contribution</p>
@@ -410,11 +411,11 @@ export const AuctionDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-red-600">
+          <Card className="border-primary bg-primary/5">
             <CardHeader>
-              <CardTitle className="text-red-500">Token Economics</CardTitle>
+              <CardTitle className="text-primary">Token Economics</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-gray-300">
+            <CardContent className="space-y-3 text-base-content/80">
               <p>• Each character has 1,000,000 total tokens</p>
               <p>• 50% locked in liquidity pool for trading</p>
               <p>• 50% distributed to auction winners</p>
