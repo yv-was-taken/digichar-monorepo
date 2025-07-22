@@ -6,15 +6,31 @@ mod modules;
 
 use modules::auction_vault::AuctionVaultService;
 use modules::characters::CharacterService;
+use modules::error_decoder::{decode_contract_error, load_abi};
 
 #[tokio::main]
 async fn main() {
+    println!("[Main] Starting DigiChar backend service...");
     loop {
         match run_protocol_loop().await {
             Ok(_) => (),
             Err(e) => {
-                eprintln!("Error in protocol loop: {e}");
-                println!("Waiting 60 seconds before retrying...");
+                eprintln!("[Main] Error in protocol loop: {e}");
+                
+                // Try to decode contract errors using the ABI
+                let err_str = e.to_string();
+                if err_str.contains("Contract call reverted") || err_str.contains("0x") {
+                    if let Ok(abi_content) = load_abi("./abis/AuctionVault.json") {
+                        let decoded_error = decode_contract_error(&err_str, &abi_content);
+                        eprintln!("[Main] Decoded error: {}", decoded_error);
+                        
+                        if decoded_error.contains("OnlyProtocolAdmin") {
+                            eprintln!("[Main] Make sure PROTOCOL_ADMIN_PRIVATE_KEY env var is set correctly");
+                        }
+                    }
+                }
+                
+                println!("[Main] Waiting 60 seconds before retrying...");
                 sleep(Duration::from_secs(60)).await;
             }
         }
@@ -22,10 +38,14 @@ async fn main() {
 }
 
 async fn run_protocol_loop() -> Result<()> {
+    println!("[Protocol] Initializing services...");
     let auction_service = AuctionVaultService::new()?;
     let character_service = CharacterService::new();
+    println!("[Protocol] Services initialized successfully");
 
     loop {
+        println!("[Protocol] Starting new protocol loop iteration");
+        
         let current_auction_closing_timestamp = auction_service
             .get_current_auction_closing_timestamp()
             .await?;
@@ -36,23 +56,39 @@ async fn run_protocol_loop() -> Result<()> {
             auction_service.is_auction_open(current_auction_id).await?;
 
         while is_current_auction_open {
-            let mut interval_until_auction_close = tokio::time::interval(Duration::from_secs(
-                (current_auction_closing_timestamp - current_timestamp).as_u64(),
-            ));
+            println!("[Protocol] Auction {} is open, waiting for it to close...", current_auction_id);
+            let wait_duration = (current_auction_closing_timestamp - current_timestamp).as_u64();
+            println!("[Protocol] Waiting {} seconds until auction closes", wait_duration);
+            
+            let mut interval_until_auction_close = tokio::time::interval(Duration::from_secs(wait_duration));
             interval_until_auction_close.tick().await;
 
+            println!("[Protocol] Auction closing time reached, analyzing auction results...");
+            
             // Analyze the auction to determine the winner
             let (top_bidder, winning_character_index) = auction_service
                 .get_auction_winner(current_auction_id.as_u64())
                 .await?;
 
+            println!("[Protocol] Attempting to close auction with winner: {} (character: {})", top_bidder, winning_character_index);
+            
             auction_service
                 .close_auction(top_bidder, winning_character_index)
                 .await?;
+            
+            println!("[Protocol] Checking if auction is still open after close attempt...");
             is_current_auction_open = auction_service.is_auction_open(current_auction_id).await?;
 
+            if !is_current_auction_open {
+                println!("[Protocol] Auction closed successfully, creating new characters...");
+            } else {
+                println!("[Protocol] WARNING: Auction still appears to be open after close attempt!");
+            }
+            
             let characters = character_service.create_characters().await?;
+            println!("[Protocol] Created {} new characters", characters.len());
 
+            println!("[Protocol] Uploading characters to IPFS...");
             let character_uris: [String; 3] = futures::future::join_all(
                 characters
                     .iter()

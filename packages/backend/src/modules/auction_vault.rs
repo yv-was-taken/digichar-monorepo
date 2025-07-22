@@ -1,14 +1,16 @@
 use ethers::abi::RawLog;
 use ethers::contract::abigen;
 use ethers::prelude::{EthEvent, EthLogDecode};
+use ethers::middleware::SignerMiddleware;
 use ethers::providers::{Http, Middleware, Provider};
+use ethers::signers::{LocalWallet, Signer};
 use ethers::types::{Address, BlockNumber, Filter, U256};
 use eyre::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::modules::config::{AUCTION_VAULT_CONTRACT_ADDRESS, RPC_URL};
-use crate::modules::types::Character;
+use crate::modules::error_decoder::{decode_contract_error, load_abi};
 
 abigen!(
     AuctionVaultEvents,
@@ -35,17 +37,36 @@ struct CharacterData {
 
 pub struct AuctionVaultService {
     provider: Arc<Provider<Http>>,
+    signer: Option<Arc<SignerMiddleware<Provider<Http>, LocalWallet>>>,
     auction_vault_address: Address,
 }
 
 impl AuctionVaultService {
     pub fn new() -> Result<Self> {
         let provider = Provider::<Http>::try_from(RPC_URL)?;
-        let client = Arc::new(provider);
+        let client = Arc::new(provider.clone());
         let auction_vault_address = AUCTION_VAULT_CONTRACT_ADDRESS.parse::<Address>()?;
+        
+        // Try to load private key from environment variable
+        let signer = match std::env::var("PROTOCOL_ADMIN_PRIVATE_KEY") {
+            Ok(pk) => {
+                println!("[AuctionVault] Loading protocol admin wallet from PROTOCOL_ADMIN_PRIVATE_KEY env var");
+                let wallet: LocalWallet = pk.parse::<LocalWallet>()?
+                    .with_chain_id(31337u64); // Local hardhat chain ID
+                println!("[AuctionVault] Protocol admin address: {:?}", wallet.address());
+                let signer_middleware = SignerMiddleware::new(provider, wallet);
+                Some(Arc::new(signer_middleware))
+            },
+            Err(_) => {
+                eprintln!("[AuctionVault] WARNING: PROTOCOL_ADMIN_PRIVATE_KEY not set. State-changing functions will fail!");
+                eprintln!("[AuctionVault] Set PROTOCOL_ADMIN_PRIVATE_KEY env var with the protocol admin's private key");
+                None
+            }
+        };
 
         Ok(Self {
             provider: client,
+            signer,
             auction_vault_address,
         })
     }
@@ -56,13 +77,45 @@ impl AuctionVaultService {
         character_names: [String; 3],
         character_symbols: [String; 3],
     ) -> Result<()> {
+        println!("[AuctionVault] Creating new auction with characters:");
+        for i in 0..3 {
+            println!("  Character {}: {} ({}) - {}", i, character_names[i], character_symbols[i], character_uris[i]);
+        }
+        
         abigen!(AuctionVault, "./abis/AuctionVault.json");
-        let auction_vault = AuctionVault::new(self.auction_vault_address, self.provider.clone());
-        auction_vault
-            .create_auction(character_uris, character_names, character_symbols)
-            .call()
-            .await?;
-        Ok(())
+        
+        if let Some(signer) = &self.signer {
+            let auction_vault = AuctionVault::new(self.auction_vault_address, signer.clone());
+            match auction_vault
+                .create_auction(character_uris, character_names, character_symbols)
+                .send()
+                .await {
+                Ok(pending_tx) => {
+                    println!("[AuctionVault] Transaction sent: {:?}", pending_tx.tx_hash());
+                    match pending_tx.await {
+                        Ok(receipt) => {
+                            println!("[AuctionVault] Successfully created new auction. Receipt: {:?}", receipt);
+                            Ok(())
+                        },
+                        Err(e) => {
+                            let abi_content = load_abi("./abis/AuctionVault.json").unwrap_or_default();
+                            let decoded_error = decode_contract_error(&e.to_string(), &abi_content);
+                            eprintln!("[AuctionVault] Transaction failed: {}", decoded_error);
+                            Err(e.into())
+                        }
+                    }
+                },
+                Err(e) => {
+                    let abi_content = load_abi("./abis/AuctionVault.json").unwrap_or_default();
+                    let decoded_error = decode_contract_error(&e.to_string(), &abi_content);
+                    eprintln!("[AuctionVault] Failed to send create auction transaction: {}", decoded_error);
+                    Err(e.into())
+                }
+            }
+        } else {
+            eprintln!("[AuctionVault] Cannot create auction: No signer configured");
+            Err(eyre::eyre!("No signer configured. Set PROTOCOL_ADMIN_PRIVATE_KEY environment variable"))
+        }
     }
 
     pub async fn close_auction(
@@ -70,31 +123,90 @@ impl AuctionVaultService {
         top_bidder: Address,
         winning_character_index: u8,
     ) -> Result<()> {
+        println!("[AuctionVault] Closing auction with winner: {} (character index: {})", top_bidder, winning_character_index);
+        
         abigen!(AuctionVault, "./abis/AuctionVault.json");
-        let auction_vault = AuctionVault::new(self.auction_vault_address, self.provider.clone());
-        auction_vault
-            .close_current_auction(top_bidder, winning_character_index)
-            .call()
-            .await?;
-        Ok(())
+        
+        if let Some(signer) = &self.signer {
+            let auction_vault = AuctionVault::new(self.auction_vault_address, signer.clone());
+            match auction_vault
+                .close_current_auction(top_bidder, winning_character_index)
+                .send()
+                .await {
+                Ok(pending_tx) => {
+                    println!("[AuctionVault] Close auction tx sent: {:?}", pending_tx.tx_hash());
+                    match pending_tx.await {
+                        Ok(receipt) => {
+                            println!("[AuctionVault] Successfully closed auction. Receipt: {:?}", receipt);
+                            Ok(())
+                        },
+                        Err(e) => {
+                            let abi_content = load_abi("./abis/AuctionVault.json").unwrap_or_default();
+                            let decoded_error = decode_contract_error(&e.to_string(), &abi_content);
+                            eprintln!("[AuctionVault] Close auction transaction failed: {}", decoded_error);
+                            Err(e.into())
+                        }
+                    }
+                },
+                Err(e) => {
+                    let abi_content = load_abi("./abis/AuctionVault.json").unwrap_or_default();
+                    let decoded_error = decode_contract_error(&e.to_string(), &abi_content);
+                    eprintln!("[AuctionVault] Failed to send close auction transaction: {}", decoded_error);
+                    Err(e.into())
+                }
+            }
+        } else {
+            eprintln!("[AuctionVault] Cannot close auction: No signer configured");
+            Err(eyre::eyre!("No signer configured. Set PROTOCOL_ADMIN_PRIVATE_KEY environment variable"))
+        }
     }
 
     pub async fn get_current_auction_id(&self) -> Result<U256> {
         abigen!(AuctionVault, "./abis/AuctionVault.json");
         let auction_vault = AuctionVault::new(self.auction_vault_address, self.provider.clone());
-        let current_auction_id: U256 = auction_vault.auction_id().call().await?;
-        Ok(current_auction_id)
+        
+        match auction_vault.auction_id().call().await {
+            Ok(id) => {
+                println!("[AuctionVault] Current auction ID: {}", id);
+                Ok(id)
+            },
+            Err(e) => {
+                eprintln!("[AuctionVault] Failed to get current auction ID: {:?}", e);
+                Err(e.into())
+            }
+        }
     }
 
     pub async fn get_current_auction_closing_timestamp(&self) -> Result<U256> {
         abigen!(AuctionVault, "./abis/AuctionVault.json");
         let auction_vault = AuctionVault::new(self.auction_vault_address, self.provider.clone());
-        let current_auction_id: U256 = auction_vault.auction_id().call().await?;
-        let auction_closing_timestamp: U256 = auction_vault
+        
+        let current_auction_id = match auction_vault.auction_id().call().await {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("[AuctionVault] Failed to get auction ID for timestamp check: {:?}", e);
+                return Err(e.into());
+            }
+        };
+        
+        match auction_vault
             .get_auction_end_time(current_auction_id)
             .call()
-            .await?;
-        Ok(auction_closing_timestamp)
+            .await {
+            Ok(timestamp) => {
+                let current_time = chrono::Utc::now().timestamp();
+                println!("[AuctionVault] Auction {} ends at: {} (in {} seconds)", 
+                    current_auction_id, 
+                    timestamp,
+                    timestamp.as_u64() as i64 - current_time
+                );
+                Ok(timestamp)
+            },
+            Err(e) => {
+                eprintln!("[AuctionVault] Failed to get auction end time: {:?}", e);
+                Err(e.into())
+            }
+        }
     }
 
     pub async fn is_current_auction_expired(&self) -> Result<bool> {
@@ -107,12 +219,21 @@ impl AuctionVaultService {
     pub async fn is_auction_open(&self, auction_id: U256) -> Result<bool> {
         abigen!(AuctionVault, "./abis/AuctionVault.json");
         let auction_vault = AuctionVault::new(self.auction_vault_address, self.provider.clone());
+        
+        println!("[AuctionVault] Checking if auction {} is open", auction_id);
+        
         match auction_vault.is_auction_open(auction_id).call().await {
-            Ok(result) => Ok(result),
-            Err(err) => Err(eyre::eyre!(format!(
-                "failed reading contract while calling `is_auction_open` with err {}",
-                err
-            ))),
+            Ok(is_open) => {
+                println!("[AuctionVault] Auction {} is {}", auction_id, if is_open { "OPEN" } else { "CLOSED" });
+                Ok(is_open)
+            },
+            Err(err) => {
+                eprintln!("[AuctionVault] Failed to check if auction {} is open: {:?}", auction_id, err);
+                Err(eyre::eyre!(format!(
+                    "failed reading contract while calling `is_auction_open` with err {}",
+                    err
+                )))
+            }
         }
     }
 
@@ -244,6 +365,19 @@ impl AuctionVaultService {
     }
 
     pub async fn get_auction_winner(&self, auction_id: u64) -> Result<(Address, u8)> {
-        self.analyze_auction(auction_id, None, None).await
+        println!("[AuctionVault] Analyzing auction {} to determine winner", auction_id);
+        let result = self.analyze_auction(auction_id, None, None).await;
+        
+        match &result {
+            Ok((winner_address, character_index)) => {
+                println!("[AuctionVault] Auction {} winner: {} with character {}", 
+                    auction_id, winner_address, character_index);
+            },
+            Err(e) => {
+                eprintln!("[AuctionVault] Failed to determine auction {} winner: {:?}", auction_id, e);
+            }
+        }
+        
+        result
     }
 }
