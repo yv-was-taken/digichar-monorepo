@@ -1,11 +1,12 @@
 use ethers::abi::Abi;
+use ethers::types::Bytes;
 
-// Simple error decoder that focuses on error selectors
+// Proper error decoder using ABI
 pub fn decode_contract_error(error_str: &str, abi_json: &str) -> String {
-    // Parse the ABI
-    let _abi: Abi = match serde_json::from_str(abi_json) {
+    // Parse the ABI from the contract JSON
+    let contract_abi = match parse_contract_abi(abi_json) {
         Ok(abi) => abi,
-        Err(_) => return format!("Contract error: {} (failed to parse ABI)", error_str),
+        Err(e) => return format!("Contract error: {} (ABI parse error: {})", error_str, e),
     };
     
     // Extract hex data from error string
@@ -18,26 +19,74 @@ pub fn decode_contract_error(error_str: &str, abi_json: &str) -> String {
         
         // Decode the hex data
         if hex_data.len() >= 10 { // At least 0x + 8 chars for selector
-            // Get just the selector (0x + 8 chars)
-            let selector_hex = &hex_data[..10];
-            
-            // Try to match against known error selectors
-            match selector_hex {
-                "0x6115a9ad" => return format!("OnlyProtocolAdmin: This function can only be called by the protocol admin ({})", hex_data),
-                "0x64b5c437" => return format!("AlreadyClaimed: Tokens have already been claimed for this auction ({})", hex_data),
-                "0xd738a887" => return format!("AmountTooLarge: The specified amount is too large ({})", hex_data),
-                "0xcbb7c0e9" => return format!("AmountZero: Amount must be greater than zero ({})", hex_data),
-                "0x04a5e667" => return format!("AuctionExpired: The auction has expired ({})", hex_data),
-                "0x6c586317" => return format!("AuctionStillOpen: The auction is still open ({})", hex_data),
-                "0x6365d4e7" => return format!("InvalidCharacter: Invalid character index specified ({})", hex_data),
-                "0x319576eb" => return format!("AuctionClosed: The auction is closed ({})", hex_data),
-                _ => return format!("Unknown contract error ({})", hex_data),
+            if let Ok(error_bytes) = hex::decode(&hex_data[2..]) {
+                let error_data = Bytes::from(error_bytes);
+                
+                // Try to decode using each error in the ABI
+                for error_abi in contract_abi.errors() {
+                    if let Ok(decoded_tokens) = error_abi.decode(&error_data) {
+                        if decoded_tokens.is_empty() {
+                            return format!("{}: {} ({})", 
+                                error_abi.name, 
+                                get_error_description(&error_abi.name),
+                                hex_data
+                            );
+                        } else {
+                            let params: Vec<String> = decoded_tokens.into_iter()
+                                .map(|token| format!("{:?}", token))
+                                .collect();
+                            return format!("{}: {} - params: [{}] ({})", 
+                                error_abi.name, 
+                                get_error_description(&error_abi.name),
+                                params.join(", "),
+                                hex_data
+                            );
+                        }
+                    }
+                }
+                
+                // If no match found
+                return format!("Unknown contract error ({})", hex_data);
             }
         }
     }
     
     // If we couldn't decode it, return the original error
     format!("Contract error: {}", error_str)
+}
+
+// Parse ABI from contract JSON file
+fn parse_contract_abi(abi_json: &str) -> Result<Abi, String> {
+    // First try parsing as raw ABI array
+    if let Ok(abi) = serde_json::from_str::<Abi>(abi_json) {
+        return Ok(abi);
+    }
+    
+    // Try parsing as contract JSON with "abi" field
+    let contract_json: serde_json::Value = serde_json::from_str(abi_json)
+        .map_err(|e| format!("Invalid JSON: {}", e))?;
+    
+    if let Some(abi_value) = contract_json.get("abi") {
+        let abi: Abi = serde_json::from_value(abi_value.clone())
+            .map_err(|e| format!("Invalid ABI format: {}", e))?;
+        return Ok(abi);
+    }
+    
+    Err("No ABI found in JSON".to_string())
+}
+
+fn get_error_description(error_name: &str) -> &'static str {
+    match error_name {
+        "OnlyProtocolAdmin" => "This function can only be called by the protocol admin",
+        "AlreadyClaimed" => "Tokens have already been claimed for this auction",
+        "AmountTooLarge" => "The specified amount is too large",
+        "AmountZero" => "Amount must be greater than zero",
+        "AuctionExpired" => "The auction has expired",
+        "AuctionStillOpen" => "The auction is still open",
+        "InvalidCharacter" => "Invalid character index specified",
+        "AuctionClosed" => "The auction is closed",
+        _ => "Unknown error type"
+    }
 }
 
 // Load ABI from file

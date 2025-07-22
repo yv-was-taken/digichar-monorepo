@@ -7,9 +7,13 @@ mod modules;
 use modules::auction_vault::AuctionVaultService;
 use modules::characters::CharacterService;
 use modules::error_decoder::{decode_contract_error, load_abi};
+use modules::helpers::format_duration;
 
 #[tokio::main]
 async fn main() {
+    // Load environment variables from .env file
+    dotenv::dotenv().ok();
+    
     println!("[Main] Starting DigiChar backend service...");
     loop {
         match run_protocol_loop().await {
@@ -58,10 +62,11 @@ async fn run_protocol_loop() -> Result<()> {
         while is_current_auction_open {
             println!("[Protocol] Auction {} is open, waiting for it to close...", current_auction_id);
             let wait_duration = (current_auction_closing_timestamp - current_timestamp).as_u64();
-            println!("[Protocol] Waiting {} seconds until auction closes", wait_duration);
+            let duration_str = format_duration(wait_duration as i64);
+            println!("[Protocol] Waiting {} until auction closes", duration_str);
             
-            let mut interval_until_auction_close = tokio::time::interval(Duration::from_secs(wait_duration));
-            interval_until_auction_close.tick().await;
+            // Sleep until the auction closes
+            tokio::time::sleep(Duration::from_secs(wait_duration)).await;
 
             println!("[Protocol] Auction closing time reached, analyzing auction results...");
             
