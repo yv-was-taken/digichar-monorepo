@@ -21,28 +21,36 @@ impl CharacterService {
         let url =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
-        let prompt = r#"Generate EXACTLY 3 memecoin characters. Each memecoin should be a character designed in a way that is similar to other characters throughout recent history that have accrued a fandom. think Sanrio characters, Dogecoin, Sonic, Spongebob, Naruto, things like that. 
+        let prompt = r#"Generate EXACTLY 3 memecoin characters in JSON format. Each character should be designed like popular characters with fandoms (Sanrio, Dogecoin, Sonic, Spongebob, Naruto, etc).
 
-For each memecoin character, include:
+Each of the 3 characters should be from a different style:
+- sanrio/kawaii
+- traditional crypto memecoins (doge, shib, pepe style)  
+- newage meme culture (wojak, gigachad style)
 
-- name
-- ticker (5 characters maximum, think like stock market company abbreviations for each character)
-- description (one sentence maximum, no more than twelve words)
-- image for the character (generate an image for each character, one character per image, include the image with the other attributes of the listing)
+Return ONLY valid JSON in this exact format:
+[
+  {
+    "name": "Character Name",
+    "ticker": "TICK",
+    "description": "Short description under 12 words",
+    "image_url": "https://example.com/image1.png"
+  },
+  {
+    "name": "Character Name 2", 
+    "ticker": "TICK2",
+    "description": "Another short description under 12 words",
+    "image_url": "https://example.com/image2.png"
+  },
+  {
+    "name": "Character Name 3",
+    "ticker": "TICK3", 
+    "description": "Third short description under 12 words",
+    "image_url": "https://example.com/image3.png"
+  }
+]
 
-Each of the 3 characters should be from a different categorical style from the following list:
-
-- sanrio
-- kawaii
-- traditional (think similar to other crypto memecoins, i.e. doge, shib, popcat, pepe)
-- newage meme culture (think wojak, chud aka "nothing ever happens", gigachad, etc)
-- bizarro (wild card)
-
-Choose 3 different styles randomly.
-
-IMPORTANT: Generate EXACTLY 3 characters total. No more, no less. Format the output as a list with exactly 3 characters.
-
-"#;
+IMPORTANT: Return ONLY the JSON array, no other text before or after. Include actual image URLs for character artwork."#;
 
         let mut characters = Vec::new();
         let https = HttpsConnector::new();
@@ -74,34 +82,59 @@ IMPORTANT: Generate EXACTLY 3 characters total. No more, no less. Format the out
                 if let Some(content) = candidate.get("content").and_then(|c| c.get("parts"))
                     && let Some(text) = content[0].get("text").and_then(|t| t.as_str())
                 {
-                    let lines: Vec<&str> = text.lines().collect();
-                    let mut char_idx = 0;
+                    println!("[CharacterService] Raw API response: {}", text);
                     
-                    for i in (0..lines.len()).step_by(5) {
-                        if i + 4 < lines.len() && char_idx < 3 {
-                            let name = lines[i].replace("- name: ", "");
-                            let ticker = lines[i + 1].replace("- ticker: ", "");
-                            let description = lines[i + 2].replace("- description: ", "");
-                            let image_url = lines[i + 3].replace("- image: ", "");
-
-                            // Create unique filename based on character name and ticker
-                            let sanitized_name =
-                                name.replace(" ", "_").replace("/", "_").replace(":", "_");
-                            let avatar_file_name =
-                                format!("{}_{}_{}.png", sanitized_name, ticker, char_idx);
-
-                            // Download the avatar image
-                            self.download_character_avatar(&image_url, &avatar_file_name)
-                                .await?;
-
-                            characters.push(Character {
-                                name,
-                                symbol: ticker,
-                                description,
-                                avatar_file_name,
-                            });
+                    // Clean the response text (remove markdown code blocks if present)
+                    let cleaned_text = text
+                        .trim()
+                        .strip_prefix("```json").unwrap_or(text)
+                        .strip_suffix("```").unwrap_or(text)
+                        .trim();
+                    
+                    // Parse JSON response
+                    match serde_json::from_str::<Vec<serde_json::Value>>(cleaned_text) {
+                        Ok(character_data) => {
+                            println!("[CharacterService] Successfully parsed {} characters from JSON", character_data.len());
                             
-                            char_idx += 1;
+                            for (idx, char_json) in character_data.iter().enumerate().take(3) {
+                                if let (Some(name), Some(ticker), Some(description), Some(image_url)) = (
+                                    char_json.get("name").and_then(|n| n.as_str()),
+                                    char_json.get("ticker").and_then(|t| t.as_str()),
+                                    char_json.get("description").and_then(|d| d.as_str()),
+                                    char_json.get("image_url").and_then(|i| i.as_str())
+                                ) {
+                                    // Create unique filename based on character name and ticker
+                                    let sanitized_name = name
+                                        .replace(" ", "_")
+                                        .replace("/", "_")
+                                        .replace(":", "_");
+                                    let avatar_file_name = format!("{}_{}_{}.png", sanitized_name, ticker, idx);
+
+                                    // Download the avatar image
+                                    match self.download_character_avatar(image_url, &avatar_file_name).await {
+                                        Ok(_) => println!("[CharacterService] Downloaded avatar for {}", name),
+                                        Err(e) => {
+                                            eprintln!("[CharacterService] Failed to download avatar for {}: {}", name, e);
+                                            // Continue with a placeholder file name
+                                        }
+                                    }
+
+                                    characters.push(Character {
+                                        name: name.to_string(),
+                                        symbol: ticker.to_string(),
+                                        description: description.to_string(),
+                                        avatar_file_name,
+                                    });
+                                    
+                                    println!("[CharacterService] Created character: {} ({})", name, ticker);
+                                } else {
+                                    eprintln!("[CharacterService] Missing required fields in character {}", idx);
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("[CharacterService] Failed to parse JSON response: {}", e);
+                            eprintln!("[CharacterService] Raw response was: {}", cleaned_text);
                         }
                     }
                 }

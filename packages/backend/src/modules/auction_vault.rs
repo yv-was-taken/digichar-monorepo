@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::modules::config::{AUCTION_VAULT_CONTRACT_ADDRESS, RPC_URL};
 use crate::modules::error_decoder::{decode_contract_error, load_abi};
-use crate::modules::helpers::format_duration;
+use crate::modules::helpers::{format_duration, safe_duration_calculation};
 
 abigen!(
     AuctionVaultEvents,
@@ -198,7 +198,7 @@ impl AuctionVaultService {
                 let current_time = chrono::Utc::now().timestamp();
                 let end_datetime = chrono::DateTime::<chrono::Utc>::from_timestamp(timestamp.as_u64() as i64, 0)
                     .unwrap_or_else(|| chrono::Utc::now());
-                let duration_secs = timestamp.as_u64() as i64 - current_time;
+                let duration_secs = safe_duration_calculation(timestamp, current_time);
                 let duration_str = format_duration(duration_secs);
                 
                 println!("[AuctionVault] Auction {} ends at: {} UTC (in {})", 
