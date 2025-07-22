@@ -37,7 +37,7 @@ async fn run_protocol_loop() -> Result<()> {
 
         while is_current_auction_open {
             let mut interval_until_auction_close = tokio::time::interval(Duration::from_secs(
-                (current_timestamp - current_auction_closing_timestamp).as_u64(),
+                (current_auction_closing_timestamp - current_timestamp).as_u64(),
             ));
             interval_until_auction_close.tick().await;
 

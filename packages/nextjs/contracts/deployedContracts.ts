@@ -543,7 +543,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752174623.json",
+      deploymentFile: "run-1753208007.json",
       deploymentScript: "Deploy.s.sol",
     },
     AuctionVault: {
@@ -1069,7 +1069,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752174623.json",
+      deploymentFile: "run-1753208007.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharFactory: {
@@ -1259,7 +1259,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752174623.json",
+      deploymentFile: "run-1753208007.json",
       deploymentScript: "Deploy.s.sol",
     },
     DigicharOwnershipCertificate: {
@@ -1707,7 +1707,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752174623.json",
+      deploymentFile: "run-1753208007.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockWETH: {
@@ -2079,7 +2079,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752174623.json",
+      deploymentFile: "run-1753208007.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockUniswapV2Factory: {
@@ -2255,7 +2255,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752174623.json",
+      deploymentFile: "run-1753208007.json",
       deploymentScript: "Deploy.s.sol",
     },
     MockUniswapV2Router02: {
@@ -2389,7 +2389,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deploymentFile: "run-1752174623.json",
+      deploymentFile: "run-1753208007.json",
       deploymentScript: "Deploy.s.sol",
     },
   },
