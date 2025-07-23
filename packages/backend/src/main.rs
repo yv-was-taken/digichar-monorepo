@@ -35,8 +35,8 @@ async fn main() {
                     }
                 }
 
-                println!("[Main] Waiting 60 seconds before retrying...");
-                sleep(Duration::from_secs(60)).await;
+                println!("[Main] Waiting 10 seconds before retrying...");
+                sleep(Duration::from_secs(10)).await;
             }
         }
     }
