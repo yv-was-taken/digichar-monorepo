@@ -303,7 +303,7 @@ IMPORTANT: Return ONLY the JSON array, no other text before or after."#;
                     println!("[CharacterService] Deleted local file: {}", character.avatar_file_name);
                 }
                 
-                Ok(format!("ipfs://{cid}"))
+                Ok(cid.to_string())
             } else {
                 Err(eyre::eyre!("Failed to get CID from response"))
             }
